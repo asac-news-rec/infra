@@ -1,22 +1,23 @@
 # 에이전트 보안 가이드
 
-> Last Updated: 2026-07-07
+> Last Updated: 2026-11-03
 
 시크릿, 자격 증명, IAM, workflow 권한을 다룰 때 사용하는 문서입니다.
 
 ## Secrets
 
 - 다음을 절대 커밋하지 않습니다:
-  - `.env` (로컬 환경 변수)
+  - `.env` (로컬 환경 변수. 공유는 값이 비어 있는 `.env.example`만)
   - `keys/` 하위 파일, service account key JSON
   - `*.pem`, `*.key`, `application_default_credentials.json`
+  - LLM API 키(OpenRouter 등)
   - Terraform state(`*.tfstate`)와 실값 `terraform.tfvars` — state와
     tfvars에는 비밀번호, private IP, project id가 포함될 수 있습니다.
-- 시크릿 값은 코드, 로그, PR 본문, 커밋 메시지에 포함하지 않습니다.
+- 시크릿 값은 코드, 로그, PR 본문, 커밋 메시지, 이슈, 채팅에 포함하지 않습니다.
 - 애플리케이션이 소비하는 시크릿은 Secret Manager로 관리하고, Terraform
   에서는 `random_password` 생성 → Secret Manager 저장 패턴을 사용합니다.
-- 새 변수가 필요하면 값이 비어 있는 항목을 `terraform.tfvars.example`에
-  추가하고 용도를 주석으로 남깁니다.
+- 새 변수가 필요하면 값이 비어 있는 항목을 `.env.example`(compose) 또는
+  `terraform.tfvars.example`(Terraform)에 추가하고 용도를 주석으로 남깁니다.
 - 커밋 전 `git status`와 diff에서 시크릿·자격 증명·state 파일이
   포함되지 않았는지 확인합니다.
 

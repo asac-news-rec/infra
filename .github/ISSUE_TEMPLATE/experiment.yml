@@ -31,7 +31,9 @@ body:
     attributes:
       label: 영역
       options:
+        - Docker Compose (로컬 개발 환경)
         - Terraform / IaC
+        - Helm / Kubernetes
         - GCP IAM / Security
         - Deployment Workflow
         - Cost / Quota

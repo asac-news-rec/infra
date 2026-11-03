@@ -35,7 +35,9 @@ body:
       label: 영향받는 컴포넌트
       multiple: true
       options:
+        - Docker Compose (로컬 개발 환경)
         - Terraform / IaC
+        - Helm / Kubernetes
         - GCP Project / IAM
         - Secret Manager
         - Artifact Registry
