@@ -1,0 +1,58 @@
+# ===== 비밀값 (절대 커밋하지 않음) =====
+.env
+.env.*
+!.env.example
+keys/
+*.pem
+*.key
+*.p12
+credentials*.json
+service-account*.json
+sa-key.json
+*-key.json
+*_key.json
+application_default_credentials.json
+.kube/
+kubeconfig*
+
+# ===== Terraform =====
+# 상태 파일에는 비밀값이 들어갈 수 있다. 원격 상태(GCS)를 쓰고 로컬 상태는 올리지 않는다.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+# 변수 파일은 올리지 않고, 값이 비어 있는 예시 파일만 올린다.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# .terraform.lock.hcl 은 provider 버전을 고정하므로 올린다 (여기에 적지 않는다).
+
+# ===== Helm =====
+*.tgz
+
+# ===== 로컬 실행 데이터 (Docker Compose 볼륨 등) =====
+data/
+volumes/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# ===== 에이전트 로컬 전용 =====
+.claude/settings.local.json
+agent.local.md
+
+# ===== Python / 에디터 / 운영체제 =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+.vscode/
+.idea/
