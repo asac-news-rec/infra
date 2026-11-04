@@ -1,0 +1,4 @@
+# 이 파일을 terraform.tfvars로 복사해서 값을 채운다. terraform.tfvars는 Git에 올리지 않는다.
+project_id = "your-gcp-project-id"
+# region      = "asia-northeast3"
+# name_prefix = "news-rec"
