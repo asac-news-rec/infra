@@ -1,0 +1,22 @@
+# Valkey Helm 차트 값 (공식 차트: https://valkey.io/valkey-helm/)
+# 차트 버전: 0.12.1 (앱 9.1.3). 설치할 때 --version 0.12.1로 고정한다.
+# 구성: 단독(standalone) 1개. 복제(replica)와 Sentinel은 켜지 않는다.
+
+# GKE Autopilot은 파드가 요청한 CPU·메모리만큼 과금되므로 작게 시작한다.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 250m
+    memory: 512Mi
+
+# 캐시 용도라서 디스크를 쓰지 않는다(재시작하면 데이터가 사라진다).
+# 단독 구성의 저장소 키는 dataStorage이다(persistence는 replica 전용).
+dataStorage:
+  enabled: false
+
+# 클러스터 안(ClusterIP)에서만 접근한다. 인증은 후속 작업에서 켠다.
+# 켤 때는 default 사용자를 aclUsers 또는 aclConfig에 정의해야 한다.
+auth:
+  enabled: false
