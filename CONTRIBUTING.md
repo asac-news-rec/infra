@@ -1,4 +1,4 @@
-/# 기여 가이드 (Contributing Guide)
+# 기여 가이드 (Contributing Guide)
 
 infra 저장소에 기여해 주셔서 감사합니다.
 이 저장소는 ASAC 파이널 프로젝트(뉴스 추천 시스템)의 로컬 개발 환경(Docker Compose),
@@ -17,7 +17,7 @@ infra 저장소에 기여해 주셔서 감사합니다.
 
 1. **이슈 등록**: 코드가 변경되는 작업은 반드시 이슈를 먼저 만듭니다.
    `Issues > New issue`에서 Issue Form(Feature / Bug / Experiment / 인프라 요청)을 선택해 작성해 주세요. Form을 선택하면 제목 prefix와 label이 자동으로 적용됩니다.
-인프라 자원(Terraform 리소스, Helm Chart, Secret)이 필요하면 **인프라 요청** Form으로 요청합니다. Secret 값은 이슈에 적지 않습니다.
+   인프라 자원(Terraform 리소스, Helm Chart, Secret)이 필요하면 **인프라 요청** Form으로 요청합니다. Secret 값은 이슈에 적지 않습니다.
 
 2. **작업 브랜치 생성**: 브랜치는 **해당 이슈에서 생성**합니다.
    이슈 우측 `Development > Create a branch`를 사용하면 브랜치가 이슈에 자동 연결되고, `main` 기준으로 분기됩니다. 브랜치 네이밍 규칙은 아래를 따릅니다.
@@ -141,7 +141,7 @@ Settings → Rules에서 확인하고, 강제할 수 없으면 위 규칙을 팀
 
 ## Label 및 Project 운영
 
-label은 필요할 때 레포에 직접 만들어 사용합니다. 후보: `feature`, `bug`, `experiment`, `documentation`, `chore`, `question`, `infra-request`
+label은 필요할 때 레포에 직접 만들어 사용합니다. 후보: `feature`, `bug`, `experiment`, `documentation`, `chore`, `question`, `infra-request`.
 Issue Form이 label을 자동으로 붙이려면 레포에 같은 이름의 label이 있어야 합니다.
 
 Project 보드는 아직 사용하지 않습니다. **[미정]**
