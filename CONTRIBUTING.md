@@ -134,7 +134,7 @@ Settings → Rules에서 확인하고, 강제할 수 없으면 위 규칙을 팀
 - 에이전트가 남긴 `이해도 확인:` inline comment에는 같은 스레드에서 답변하고, 필요하면 로컬에서 검증한 뒤 resolve합니다.
 - trivial, docs-only, formatting-only 변경에는 이해도 확인 comment를 남기지 않는 정책입니다.
 - 필요한 repository secret: `CLAUDE_CODE_OAUTH_TOKEN` (**[준비 중]** 등록 전에는 실패로 표시될 수 있습니다)
-- 에이전트 작업 규칙은 `CLAUDE.md`/`AGENTS.md`(symlink)와 `.claude/docs/`를 기준으로 합니다.
+- 에이전트 작업 규칙은 `AGENTS.md`와 `.claude/docs/`를 기준으로 합니다.
 
 ---
 
@@ -183,4 +183,4 @@ git diff --check
 - Repository: https://github.com/asac-news-rec/infra
 - Issue Forms: `.github/ISSUE_TEMPLATE/*.yml`
 - PR template: `.github/PULL_REQUEST_TEMPLATE.md`
-- 에이전트 가이드: `CLAUDE.md`, `AGENTS.md`(symlink), `.claude/docs/`
+- 에이전트 가이드: `AGENTS.md`, `.claude/docs/`
