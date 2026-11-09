@@ -1,6 +1,6 @@
 # 에이전트 프로젝트 참조
 
-> Last Updated: 2026-11-03
+> Last Updated: 2026-11-09
 
 프로젝트 구조, 폴더 책임, 팀 소유권을 빠르게 찾기 위한 문서입니다.
 "X는 어디에 있는가?", "Y는 누가 소유하는가?" 질문에 답합니다.
@@ -24,7 +24,7 @@
 ├── .claude/
 │   └── docs/                 # 에이전트 상세 가이드 (.agents는 이 폴더의 symlink)
 └── .github/
-    ├── ISSUE_TEMPLATE/       # Issue Forms (feature/bug/experiment)
+    ├── ISSUE_TEMPLATE/       # Issue Forms (feature/bug/experiment/infra-request)
     ├── PULL_REQUEST_TEMPLATE.md
     └── workflows/
         ├── branch-name-policy.yml   # 브랜치 이름 검사
