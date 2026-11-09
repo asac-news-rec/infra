@@ -41,7 +41,7 @@
 
 - 동작, 명령어, 설정이 바뀌었는데 문서를 갱신하지 않은 채 작업을
   끝내지 않습니다.
-- 규칙 문서(`CLAUDE.md`, `CONTRIBUTING.md`, `.claude/docs/`) 간에
+- 규칙 문서(`AGENTS.md`, `CONTRIBUTING.md`, `.claude/docs/`) 간에
   충돌하는 내용을 새로 만들지 않습니다. 충돌을 발견하면 사용자에게
   보고합니다.
 - 로컬 전용 파일(`agent.local.md`, `.claude/settings.local.json`, `.env`)을
