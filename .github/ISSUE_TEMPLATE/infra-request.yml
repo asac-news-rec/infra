@@ -1,0 +1,84 @@
+name: 인프라 요청
+description: Terraform 리소스, Helm Chart, Secret 추가나 변경을 요청할 때 사용합니다.
+title: "[인프라 요청] "
+labels: ["infra-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ⚠️ Secret 값(비밀번호, API 키, 토큰 등)은 이슈에 절대 적지 마세요.
+        > 키 이름만 적고, 실제 값은 인프라 담당자에게 1:1로 별도 전달해 주세요. (전달 경로는 [미정]입니다. 확정 전까지는 전달 후 메시지를 삭제해 주세요.)
+        > 실수로 값을 적었다면 수정·삭제만으로는 지워지지 않습니다(수정 기록과 이메일 알림에 남습니다). 즉시 인프라 담당자에게 알리고 해당 키를 폐기(재발급)해 주세요.
+
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: 요청 유형
+      options:
+        - Terraform 리소스 추가 / 변경
+        - Helm Chart 추가 / values 변경
+        - Secret 추가 / 변경
+        - 기타
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: 대상 환경
+      description: 현재는 dev만 사용합니다. prod는 아직 지원하지 않으며 요청해도 처리하지 않습니다.
+      multiple: false
+      options:
+        - dev
+        - prod (미지원, 향후)
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 요청 내용
+      description: 무엇을 추가하거나 바꿔야 하는지 적어 주세요. 아래 예시 중 해당하는 형식을 참고하면 됩니다.
+      placeholder: |
+        [Terraform 예시]
+        - 리소스: GCS 버킷 1개
+        - 이름: news-rec-dev-uploads
+        - 설정: 퍼블릭 접근 차단, 버전 관리 사용
+
+        [Helm 예시]
+        - Chart: valkey/valkey (버전 0.12.x)
+        - Namespace: valkey
+        - 주요 values: 단독 구성, 디스크 비활성화
+
+        [Secret 예시]
+        - 키 이름: OPENROUTER_API_KEY
+        - 사용하는 서비스: news-generator (Cloud Run)
+        - 주입 방식: 환경변수
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 필요한 이유
+      description: 어떤 기능이나 작업 때문에 필요한지 한두 줄로 적어 주세요.
+      placeholder: "예: 뉴스 이미지 저장 기능 구현에 필요"
+    validations:
+      required: true
+
+  - type: input
+    id: pr
+    attributes:
+      label: 관련 PR (선택)
+      description: Terraform 코드나 Helm values를 직접 작성했다면 PR 링크를 남겨 주세요. 리뷰 후 반영합니다.
+      placeholder: "예: #42"
+    validations:
+      required: false
+
+  - type: input
+    id: due-date
+    attributes:
+      label: 필요 시점 (선택)
+      placeholder: "예: 11/19 중간발표 전까지"
+    validations:
+      required: false

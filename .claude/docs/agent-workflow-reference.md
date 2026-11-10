@@ -1,6 +1,6 @@
 # 에이전트 워크플로우 참조
 
-> Last Updated: 2026-11-03
+> Last Updated: 2026-11-09
 
 GitHub 워크플로우 전체 가이드: Issue → Branch → Commit → PR → Review →
 Merge. 모든 인프라 작업의 운영 표준입니다. 사람용 요약은
@@ -67,6 +67,7 @@ Issue 자동 close
 | `feature.yml` | `[FEAT]` | `feature` | 목적, 작업 범위, 영향받는 인프라 영역, 완료 조건 |
 | `bug.yml` | `[BUG]` | `bug` | 현상, 재현 방법, 기대 동작, 영향 영역, 환경·로그 |
 | `experiment.yml` | `[EXP]` | `experiment` | 가설, 실험 대상, 판정 기준, 실험 설정, 결과 |
+| `infra-request.yml` | `[인프라 요청]` | `infra-request` | 요청 유형, 대상 환경, 요청 내용, 필요한 이유 |
 
 GitHub는 `form 선택 → label 자동 적용` 방식으로 동작합니다. 단, 레포에 같은
 이름의 label이 만들어져 있어야 적용됩니다. 새 작업은 Issues 화면에서 form을
@@ -220,8 +221,8 @@ Project 보드는 아직 만들지 않았습니다. 사용하기로 하면 이 �
 ## Labels
 
 필요한 label은 레포에 직접 만들어 사용합니다. 후보: `feature`, `bug`,
-`experiment`, `documentation`, `chore`, `question`. Issue Form이 자동으로
-label을 붙이려면 레포에 같은 이름의 label이 있어야 합니다.
+`experiment`, `documentation`, `chore`, `question`, `infra-request`.
+Issue Form이 자동으로 label을 붙이려면 레포에 같은 이름의 label이 있어야 합니다.
 
 ## CI
 
