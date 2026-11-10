@@ -25,11 +25,11 @@ body:
     id: environment
     attributes:
       label: 대상 환경
-      description: 현재는 dev만 사용합니다.
-      multiple: true
+      description: 현재는 dev만 사용합니다. prod는 아직 지원하지 않으며 요청해도 처리하지 않습니다.
+      multiple: false
       options:
         - dev
-        - prod
+        - prod (미지원, 향후)
     validations:
       required: true
 

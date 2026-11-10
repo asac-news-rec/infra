@@ -221,8 +221,8 @@ Project 보드는 아직 만들지 않았습니다. 사용하기로 하면 이 �
 ## Labels
 
 필요한 label은 레포에 직접 만들어 사용합니다. 후보: `feature`, `bug`,
-`experiment`, `documentation`, `chore`, `question`, `infra-request`. Issue Form이 자동으로
-label을 붙이려면 레포에 같은 이름의 label이 있어야 합니다.
+`experiment`, `documentation`, `chore`, `question`, `infra-request`. 
+Issue Form이 자동으로 label을 붙이려면 레포에 같은 이름의 label이 있어야 합니다.
 
 ## CI
 
