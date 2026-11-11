@@ -3,13 +3,23 @@ output "gke_cluster_name" {
   value       = google_container_cluster.main.name
 }
 
+output "gke_zone" {
+  description = "GKE 클러스터가 있는 구역(get-credentials에 필요)."
+  value       = google_container_cluster.main.location
+}
+
+output "dockerhub_mirror_path" {
+  description = "Docker Hub 복사본 저장소 주소(Helm values의 image.repository 앞부분)."
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.dockerhub_mirror.repository_id}"
+}
+
 output "bastion_name" {
   description = "배스천 VM 이름."
   value       = google_compute_instance.bastion.name
 }
 
 output "bastion_external_ip" {
-  description = "배스천의 고정 외부 IP(GKE 제어면이 허용하는 주소)."
+  description = "배스천의 고정 외부 IP. apt 등 인터넷 접속용이며 GKE 관리 주소 허용과는 무관하다."
   value       = google_compute_address.bastion.address
 }
 

@@ -1,5 +1,5 @@
 # 배스천 서버: 팀원이 GKE 안으로 들어가는 통로. 작은 VM 1대.
-# GKE 제어면은 "이 VM의 고정 IP"만 허용하므로 VM에 고정 외부 IP를 붙인다.
+# GKE 관리 주소는 비공개라서 VPC 안(이 VM이 있는 서브넷)에서만 접속된다. 고정 외부 IP는 NAT 없이 apt 등 인터넷을 쓰기 위한 것이다.
 # SSH는 IAP로만 들어오고(방화벽 참고), 로그인은 구글 계정(OS Login)으로 한다. 키 파일은 쓰지 않는다.
 
 resource "google_compute_address" "bastion" {
