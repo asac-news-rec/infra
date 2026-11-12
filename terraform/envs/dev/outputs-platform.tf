@@ -18,11 +18,6 @@ output "bastion_name" {
   value       = google_compute_instance.bastion.name
 }
 
-output "bastion_external_ip" {
-  description = "배스천의 고정 외부 IP. apt 등 인터넷 접속용이며 GKE 관리 주소 허용과는 무관하다."
-  value       = google_compute_address.bastion.address
-}
-
 output "bastion_ssh_command" {
   description = "IAP로 배스천에 접속하는 명령."
   value       = "gcloud compute ssh ${google_compute_instance.bastion.name} --zone ${google_compute_instance.bastion.zone} --tunnel-through-iap --project ${var.project_id}"

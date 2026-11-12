@@ -3,13 +3,13 @@
 `apis-platform.tf`, `network.tf`, `gke.tf`, `gke-nodepools.tf`, `bastion.tf`, `cloudsql.tf`와 `*-platform.tf`가 만드는 것입니다. 기본 리소스(버킷, 이미지 창고 등)는 `README.md`(PR #8)를 보세요.
 
 ## 만들어지는 것 (`plan`에서 확인)
-이 문서의 처음 구성(PR #12)은 `15 + 3 × (bastion_users에 적은 사람 수)`개였습니다. 비공개 Standard 재구성(이슈 #21)으로 노드 풀, 노드 서비스 계정과 권한, Docker Hub 복사본 저장소가 추가되었고 GKE 클러스터는 교체됩니다. 정확한 개수는 `plan`에서 확인합니다.
+이 문서의 처음 구성(PR #12)은 `15 + 3 × (bastion_users에 적은 사람 수)`개였습니다. 비공개 Standard 재구성(이슈 #21)으로 노드 풀, 노드 서비스 계정과 권한, Docker Hub 복사본 저장소가 추가되었고 GKE 클러스터는 새로 생성됩니다(옛 Autopilot 클러스터는 11/6에 삭제해 상태 파일에도 없으므로 `plan`에서 교체가 아니라 추가로 나타납니다). 정확한 개수는 `plan`에서 확인합니다.
 
 | 파일 | 리소스 | 쉬운 설명 |
 |---|---|---|
 | `apis-platform.tf` | API 5개 | compute, container, iap, oslogin, sqladmin |
 | `network.tf` | VPC, 서브넷, 방화벽 1개 | 우리 전용 네트워크. SSH는 IAP 대역에서만 허용 |
-| `bastion.tf` | 고정 IP, 서비스 계정, VM, 권한들 | 팀원이 GKE에 들어가는 통로(작은 VM 1대) |
+| `bastion.tf` | 서비스 계정, VM(임시 외부 IP), 권한들 | 팀원이 GKE에 들어가는 통로(작은 VM 1대) |
 | `gke.tf` | GKE Standard 클러스터 1개(비공개, 한 구역) | Valkey, MLflow, 추론 서버(필요하면 Airflow)가 올라갈 곳. 관리 주소에 공개 IP가 없고 배스천에서만 접속 |
 | `gke-nodepools.tf` | 노드 풀 2개(`fixed`, `worker`), 노드용 서비스 계정과 권한 | `fixed`는 항상 떠 있어야 하는 것, `worker`는 작업용(Spot, 일이 없으면 0개) |
 | `registry.tf` | (추가) `dockerhub-mirror` 저장소 | 비공개 노드가 인터넷 없이 Docker Hub 이미지를 받는 복사본 |
@@ -20,7 +20,7 @@
 - **한 구역(zonal)** 입니다(`asia-northeast3-a`). 구역은 클러스터를 만든 뒤 바꿀 수 없습니다. **Dataplane V2**(NetworkPolicy가 동작하는 네트워크 방식)도 만들 때만 고를 수 있다고 알고 있습니다(**[확인 필요]**).
 - **이미지는 Artifact Registry의 Docker Hub 복사본**에서 받습니다(NAT 없음). Docker Hub가 아닌 곳(`registry.k8s.io`, `quay.io` 등)의 이미지는 받지 못할 수 있으므로 Helm 차트를 설치하기 전에 `helm template`로 이미지 목록을 확인합니다(**[확인 필요]**).
 - **파드는 Workload Identity로 GCP에 접속**합니다(키 파일 없음). 파드별 서비스 계정 연결은 서비스를 올릴 때 추가합니다.
-- **배스천**은 외부 IP를 가지지만 SSH 방화벽은 IAP 대역(35.235.240.0/20)에서만 열립니다. 로그인은 구글 계정(OS Login)이고 키 파일은 없습니다. 외부 IP는 NAT 없이 `apt` 등 인터넷을 쓰기 위한 것이며 GKE 접속 허용과는 무관합니다.
+- **배스천**은 임시 외부 IP를 가지지만 SSH 방화벽은 IAP 대역(35.235.240.0/20)에서만 열립니다. 로그인은 구글 계정(OS Login)이고 키 파일은 없습니다. 외부 IP는 NAT 없이 `apt` 등 인터넷을 쓰기 위한 것이며 GKE 접속 허용과는 무관합니다.
 - **Cloud SQL**은 허용 네트워크를 하나도 열지 않아 직접 접속이 안 되고, Auth Proxy(구글 계정 인증, 암호화)로만 접속합니다. 비공개 IP로 바꾸는 것은 후속 결정입니다.
 - **DB 비밀번호는 Terraform으로 만들지 않습니다.** 상태 파일에 평문으로 남기 때문입니다(아래 "DB 사용자 만들기").
 
@@ -62,7 +62,7 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 
 ## 비용과 끄는 법 (공식 가격 계산기로 확인 필요)
 - **노드(VM)는 켜져 있는 시간만큼 과금**됩니다. 노드가 0개이면 노드 요금이 없습니다. 한 구역(zonal) 클러스터의 관리비는 월 무료 혜택 대상으로 알려져 있습니다(**[확인 필요]**).
-- Cloud SQL(db-f1-micro)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다.
+- Cloud SQL(db-f1-micro)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
 - 배스천 중지: `gcloud compute instances stop news-rec-bastion --zone asia-northeast3-a`
 - **노드 켜기와 끄기**(고정 풀): 코드는 `node_count` 변경을 무시하므로 `gcloud`로 조정합니다. 상태(Airflow·MLflow 기록, 모델)는 클러스터 밖(Cloud SQL, GCS, BigQuery)에 두는 것이 전제입니다.
   - 끄기: `gcloud container clusters resize news-rec-gke --node-pool fixed --num-nodes 0 --zone asia-northeast3-a`

@@ -64,8 +64,9 @@ resource "google_container_node_pool" "fixed" {
     disk_size_gb    = 50
     disk_type       = "pd-balanced"
     service_account = google_service_account.gke_nodes.email
-    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
-    labels          = merge(local.labels, { pool = "fixed" })
+    # cloud-platform 범위는 넓어 보이지만, 실제 권한은 전용 서비스 계정(gke-nodes)에 부여한 IAM 역할(로그·지표 쓰기, 이미지 읽기)이 한도가 된다.
+    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    labels       = merge(local.labels, { pool = "fixed" })
 
     # 파드가 GCP에 접속할 때 Workload Identity를 쓰도록 노드의 메타데이터 서버를 GKE 것으로 바꾼다.
     workload_metadata_config {
@@ -104,8 +105,9 @@ resource "google_container_node_pool" "worker" {
     disk_size_gb    = 50
     disk_type       = "pd-balanced"
     service_account = google_service_account.gke_nodes.email
-    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
-    labels          = merge(local.labels, { pool = "worker" })
+    # cloud-platform 범위는 넓어 보이지만, 실제 권한은 전용 서비스 계정(gke-nodes)에 부여한 IAM 역할(로그·지표 쓰기, 이미지 읽기)이 한도가 된다.
+    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    labels       = merge(local.labels, { pool = "worker" })
 
     # Spot VM: 가격이 낮은 대신 GCP가 언제든 회수할 수 있다. 다시 시도해도 되는 작업에만 쓴다.
     spot = true

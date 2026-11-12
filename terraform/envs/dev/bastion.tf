@@ -1,15 +1,8 @@
 # 배스천 서버: 팀원이 GKE 안으로 들어가는 통로. 작은 VM 1대.
-# GKE 관리 주소는 비공개라서 VPC 안(이 VM이 있는 서브넷)에서만 접속된다. 고정 외부 IP는 NAT 없이 apt 등 인터넷을 쓰기 위한 것이다.
+# GKE 관리 주소는 비공개라서 VPC 안(이 VM이 있는 서브넷)에서만 접속된다.
+# 임시 외부 IP는 NAT 없이 시작 스크립트가 apt로 kubectl을 설치하기 위한 것이다. 허용 목록에 등록하지 않으므로 고정할 필요가 없고,
+# VM을 중지하면 IP도 함께 반환되어 IP 요금이 나오지 않는다(켤 때마다 주소가 바뀐다).
 # SSH는 IAP로만 들어오고(방화벽 참고), 로그인은 구글 계정(OS Login)으로 한다. 키 파일은 쓰지 않는다.
-
-resource "google_compute_address" "bastion" {
-  project      = var.project_id
-  name         = "${var.name_prefix}-bastion-ip"
-  region       = var.region
-  address_type = "EXTERNAL"
-
-  depends_on = [google_project_service.platform_apis]
-}
 
 resource "google_service_account" "bastion" {
   project      = var.project_id
@@ -44,9 +37,8 @@ resource "google_compute_instance" "bastion" {
   network_interface {
     subnetwork = google_compute_subnetwork.main.id
 
-    access_config {
-      nat_ip = google_compute_address.bastion.address
-    }
+    # 임시 외부 IP(비어 있는 access_config). 고정 IP 리소스는 쓰지 않는다.
+    access_config {}
   }
 
   service_account {
