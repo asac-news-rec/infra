@@ -39,6 +39,12 @@ resource "google_sql_database_instance" "news" {
     }
   }
 
+  # Cloud SQL은 비용 때문에 gcloud로 켜고 끈다(activation-policy ALWAYS/NEVER).
+  # Terraform이 이 값을 되돌려서 꺼 둔 DB를 apply 때 다시 켜지 않도록 변경을 무시한다.
+  lifecycle {
+    ignore_changes = [settings[0].activation_policy]
+  }
+
   depends_on = [google_project_service.platform_apis]
 }
 

@@ -4,10 +4,34 @@ variable "bastion_users" {
   default     = []
 }
 
-variable "extra_authorized_cidrs" {
-  description = "GKE 제어면에 접근할 수 있게 추가로 허용할 IP 대역. 예: 내 공인 IP [\"1.2.3.4/32\"]. 배스천은 자동 허용된다."
-  type        = list(string)
-  default     = []
+variable "gke_master_cidr" {
+  description = "GKE 관리 주소(제어면)가 쓰는 내부 IP 대역(/28). 우리 VPC의 다른 대역과 겹치지 않아야 한다."
+  type        = string
+  default     = "172.16.0.0/28"
+}
+
+variable "gke_fixed_machine_type" {
+  description = "고정 노드 풀의 VM 사양. e2-standard-2는 2 vCPU, 8GB."
+  type        = string
+  default     = "e2-standard-2"
+}
+
+variable "gke_fixed_node_count" {
+  description = "고정 노드 풀을 만들 때의 노드 수. 0이면 노드 요금이 없다. 쓸 때는 gcloud로 늘린다(README-platform.md)."
+  type        = number
+  default     = 0
+}
+
+variable "gke_worker_machine_type" {
+  description = "작업용(worker) 노드 풀의 VM 사양."
+  type        = string
+  default     = "e2-standard-2"
+}
+
+variable "gke_worker_max_nodes" {
+  description = "작업용 노드 풀이 자동으로 늘어나는 최대 개수(비용 상한)."
+  type        = number
+  default     = 2
 }
 
 variable "gke_deletion_protection" {
