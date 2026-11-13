@@ -9,8 +9,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # mlflow: 서버 본체. google-cloud-storage: gs:// 경로에 모델 파일을 쓰기 위한 라이브러리.
 # 버전은 학습 코드(클라이언트)의 mlflow와 같게 맞춘다(3.18.0).
-# google-cloud-storage는 빌드 후 `pip freeze`로 확인한 버전을 기록해 두고 나중에 고정한다.
-RUN pip install "mlflow==3.18.0" google-cloud-storage
+# google-cloud-storage 3.17.1은 11/13 빌드 후 `pip freeze`로 확인한 버전이다.
+RUN pip install "mlflow==3.18.0" "google-cloud-storage==3.17.1"
 
 # root가 아닌 계정으로 실행한다. /mlflow/data는 디스크(PVC)가 붙는 위치다.
 RUN useradd --create-home --uid 1000 mlflow \
