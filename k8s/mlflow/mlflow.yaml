@@ -64,7 +64,7 @@ spec:
             - server
             - --host=0.0.0.0
             - --port=5000
-            - --workers=2
+            - --workers=1
             - --backend-store-uri=sqlite:////mlflow/data/mlflow.db
             - --artifacts-destination=gs://final-project-513508-model-artifacts/mlflow
             - --serve-artifacts
@@ -74,24 +74,44 @@ spec:
           ports:
             - containerPort: 5000
               name: http
+          env:
+            # MLflow 3.18은 기본으로 "작업 실행" 기능을 켜서 프로세스를 11개 띄운다(메모리 약 1.9GB, 11/14 측정).
+            # 이 서비스에는 필요 없어서 끈다. 끄면 프로세스 2개, 약 420MB.
+            - name: MLFLOW_SERVER_ENABLE_JOB_EXECUTION
+              value: "false"
+            # MLflow 3.x 보안 설정은 기본으로 localhost와 사설 IP의 Host 헤더만 허용한다.
+            # 클러스터 안에서 서비스 이름으로 접속하는 주소(mlflow.mlflow.svc.cluster.local:5000)는 기본 설정에서 403으로 막힌다(11/14 재현).
+            # 서비스 이름 형태와 localhost(베스천 port-forward)를 허용한다. 상태 확인(/health)은 이 설정과 무관하게 통과한다.
+            - name: MLFLOW_SERVER_ALLOWED_HOSTS
+              value: "mlflow:5000,mlflow.mlflow:5000,mlflow.mlflow.svc:5000,mlflow.mlflow.svc.cluster.local:5000,localhost:5000,127.0.0.1:5000"
+          # 시작이 느리다(11/14 확인: 시작 완료까지 약 1분). 시작 검사가 끝나기 전에는 아래 두 검사가 동작하지 않는다.
+          # 최대 10초 x 30번 = 5분까지 기다린다.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
           resources:
             requests:
               cpu: 250m
               memory: 512Mi
             limits:
-              cpu: 500m
+              cpu: "1"
               memory: 1Gi
           volumeMounts:
             - name: data
