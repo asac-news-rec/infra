@@ -28,6 +28,9 @@ resource "google_bigquery_dataset" "data_ml" {
 
   # 테이블이 들어 있으면 destroy가 막히도록 둔다(실수로 데이터를 지우지 않게).
   delete_contents_on_destroy = false
+
+  # 빈 프로젝트에서 처음 apply할 때 BigQuery API가 켜진 뒤에 만들도록 한다.
+  depends_on = [google_project_service.apis]
 }
 
 # 쿼리를 실행할 수 있는 권한(프로젝트 수준). 데이터는 아래 데이터셋 권한으로만 읽고 쓴다.
@@ -36,6 +39,8 @@ resource "google_project_iam_member" "data_ml_bigquery_job_user" {
   project  = var.project_id
   role     = "roles/bigquery.jobUser"
   member   = "user:${each.value}"
+
+  depends_on = [google_project_service.apis]
 }
 
 # 위 6개 데이터셋에서만 테이블을 만들고 읽고 쓴다.
