@@ -20,7 +20,7 @@
 - **GKE는 비공개 Standard 클러스터**입니다(멘토 11/5, 이슈 #21). 노드와 관리 주소 모두 공개 IP가 없고, 관리 주소에는 VPC 서브넷(배스천이 있는 곳) 안에서만 접속됩니다. 내 컴퓨터에서 직접 `kubectl`은 되지 않으며 **배스천을 거쳐야** 합니다.
 - **한 구역(zonal)** 입니다(`asia-northeast3-a`). 구역은 클러스터를 만든 뒤 바꿀 수 없습니다. **Dataplane V2**(NetworkPolicy가 동작하는 네트워크 방식)도 만들 때만 고를 수 있다고 알고 있습니다(**[확인 필요]**).
 - **이미지는 Artifact Registry 복사본**에서 받는 것을 기본으로 합니다. Docker Hub가 아닌 곳(`registry.k8s.io`, `quay.io` 등)의 이미지는 `news-rec` 저장소로 직접 복사해 씁니다(예: `git-sync`). Helm 차트를 설치하기 전에 `helm template`로 이미지 목록을 확인합니다.
-- **Cloud NAT는 나가는 연결만 허용**합니다(이슈 #N). 11/16 시험에서 NAT 없이는 GitHub, OpenRouter, registry.k8s.io에 8초 안에 닿지 않는 것을 확인했습니다. 밖에서 안으로 들어오는 연결은 열리지 않으며 접속은 계속 배스천뿐입니다. Airflow git sync와 OpenRouter 호출에 필요합니다.
+- **Cloud NAT는 나가는 연결만 허용**합니다(이슈 #36). 11/16 시험에서 NAT 없이는 GitHub, OpenRouter, registry.k8s.io에 8초 안에 닿지 않는 것을 확인했습니다. 밖에서 안으로 들어오는 연결은 열리지 않으며 접속은 계속 배스천뿐입니다. Airflow git sync와 OpenRouter 호출에 필요합니다.
 - **파드는 Workload Identity로 GCP에 접속**합니다(키 파일 없음). 파드별 서비스 계정 연결은 서비스를 올릴 때 추가합니다.
 - **배스천**은 임시 외부 IP를 가지지만 SSH 방화벽은 IAP 대역(35.235.240.0/20)에서만 열립니다. 로그인은 구글 계정(OS Login)이고 키 파일은 없습니다. 외부 IP는 `apt` 등 인터넷을 쓰기 위한 것이며(파드와 노드의 외부 접속은 Cloud NAT) GKE 접속 허용과는 무관합니다.
 - **Cloud SQL**은 허용 네트워크를 하나도 열지 않아 직접 접속이 안 되고, Auth Proxy(구글 계정 인증, 암호화)로만 접속합니다. 비공개 IP로 바꾸는 것은 후속 결정입니다.
