@@ -36,5 +36,6 @@ dags:
     repo: https://github.com/asac-news-rec/data-ml-pipeline.git
     branch: main
     subPath: dags
-    # Secret 안의 키 이름은 GITSYNC_USERNAME, GITSYNC_PASSWORD (helm template로 확인).
+    # 차트가 Secret의 키 4개(GITSYNC_USERNAME, GITSYNC_PASSWORD, GIT_SYNC_USERNAME, GIT_SYNC_PASSWORD)를
+    # 모두 참조한다(helm template로 확인). Secret에 4개를 모두 넣는다.
     credentialsSecret: airflow-git-credentials

@@ -16,16 +16,18 @@
    - Repository permissions: Contents → **Read-only** (Metadata는 자동)
    - Expiration: 2026-12-31 (최종발표 12/17 이후)
    - 조직이 승인을 요구하면 승인 요청이 가므로 승인 뒤에 사용할 수 있습니다. 토큰은 화면에 한 번만 보이니 채팅과 저장소에 올리지 않습니다.
-3. 렌더링으로 Secret의 키 이름을 확인합니다.
+3. 토큰이 저장소를 읽을 수 있는지 먼저 시험합니다(WSL). 토큰은 화면에 보이지 않게 입력합니다.
    ```bash
-   helm template airflow apache-airflow/airflow --version 1.22.0 --namespace airflow -f helm/airflow/values.yaml | grep -n -i -B1 -A4 'secretKeyRef' | grep -i -E 'git|name:|key:'
+   read -rsp "토큰 붙여넣기: " T; echo
+   git -c credential.helper= -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$T" | base64 -w0)" ls-remote https://github.com/asac-news-rec/data-ml-pipeline.git
+   unset T
    ```
-   `GITSYNC_USERNAME`, `GITSYNC_PASSWORD`가 나와야 합니다. 다르게 나오면 아래 Secret의 키 이름을 그에 맞춥니다.
-4. 네임스페이스와 Secret을 만듭니다. 토큰은 화면에 보이지 않게 입력합니다.
+   `refs/heads/main` 같은 줄이 나오면 성공입니다. 오류(403, 404)면 토큰 권한이나 조직 승인 대기를 확인합니다.
+4. 네임스페이스와 Secret을 만듭니다(베스천 안). 차트가 키 4개를 모두 참조하므로 같은 값을 4개 키로 넣습니다.
    ```bash
    kubectl create namespace airflow
    read -rsp "토큰 붙여넣기: " T; echo
-   kubectl -n airflow create secret generic airflow-git-credentials --from-literal=GITSYNC_USERNAME=<GitHub-아이디> --from-literal=GITSYNC_PASSWORD="$T"
+   kubectl -n airflow create secret generic airflow-git-credentials --from-literal=GITSYNC_USERNAME=<GitHub-아이디> --from-literal=GITSYNC_PASSWORD="$T" --from-literal=GIT_SYNC_USERNAME=<GitHub-아이디> --from-literal=GIT_SYNC_PASSWORD="$T"
    unset T
    ```
 5. 외부 접속(NAT)이 준비되었는지 확인합니다(이슈 #36).
