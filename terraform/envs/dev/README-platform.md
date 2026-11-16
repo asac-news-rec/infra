@@ -9,6 +9,7 @@
 |---|---|---|
 | `apis-platform.tf` | API 5개 | compute, container, iap, oslogin, sqladmin |
 | `network.tf` | VPC, 서브넷, 방화벽 1개 | 우리 전용 네트워크. SSH는 IAP 대역에서만 허용 |
+| `nat.tf` | Cloud Router, Cloud NAT | 비공개 노드·파드가 인터넷으로 나가는 연결만 허용(들어오는 연결은 열리지 않음) |
 | `bastion.tf` | 서비스 계정, VM(임시 외부 IP), 권한들 | 팀원이 GKE에 들어가는 통로(작은 VM 1대) |
 | `gke.tf` | GKE Standard 클러스터 1개(비공개, 한 구역) | Valkey, MLflow, 추론 서버(필요하면 Airflow)가 올라갈 곳. 관리 주소에 공개 IP가 없고 배스천에서만 접속 |
 | `gke-nodepools.tf` | 노드 풀 2개(`fixed`, `worker`), 노드용 서비스 계정과 권한 | `fixed`는 항상 떠 있어야 하는 것, `worker`는 작업용(Spot, 일이 없으면 0개) |
@@ -18,9 +19,10 @@
 ## 설계 결정
 - **GKE는 비공개 Standard 클러스터**입니다(멘토 11/5, 이슈 #21). 노드와 관리 주소 모두 공개 IP가 없고, 관리 주소에는 VPC 서브넷(배스천이 있는 곳) 안에서만 접속됩니다. 내 컴퓨터에서 직접 `kubectl`은 되지 않으며 **배스천을 거쳐야** 합니다.
 - **한 구역(zonal)** 입니다(`asia-northeast3-a`). 구역은 클러스터를 만든 뒤 바꿀 수 없습니다. **Dataplane V2**(NetworkPolicy가 동작하는 네트워크 방식)도 만들 때만 고를 수 있다고 알고 있습니다(**[확인 필요]**).
-- **이미지는 Artifact Registry의 Docker Hub 복사본**에서 받습니다(NAT 없음). Docker Hub가 아닌 곳(`registry.k8s.io`, `quay.io` 등)의 이미지는 받지 못할 수 있으므로 Helm 차트를 설치하기 전에 `helm template`로 이미지 목록을 확인합니다(**[확인 필요]**).
+- **이미지는 Artifact Registry 복사본**에서 받는 것을 기본으로 합니다. Docker Hub가 아닌 곳(`registry.k8s.io`, `quay.io` 등)의 이미지는 `news-rec` 저장소로 직접 복사해 씁니다(예: `git-sync`). Helm 차트를 설치하기 전에 `helm template`로 이미지 목록을 확인합니다.
+- **Cloud NAT는 나가는 연결만 허용**합니다(이슈 #N). 11/16 시험에서 NAT 없이는 GitHub, OpenRouter, registry.k8s.io에 8초 안에 닿지 않는 것을 확인했습니다. 밖에서 안으로 들어오는 연결은 열리지 않으며 접속은 계속 배스천뿐입니다. Airflow git sync와 OpenRouter 호출에 필요합니다.
 - **파드는 Workload Identity로 GCP에 접속**합니다(키 파일 없음). 파드별 서비스 계정 연결은 서비스를 올릴 때 추가합니다.
-- **배스천**은 임시 외부 IP를 가지지만 SSH 방화벽은 IAP 대역(35.235.240.0/20)에서만 열립니다. 로그인은 구글 계정(OS Login)이고 키 파일은 없습니다. 외부 IP는 NAT 없이 `apt` 등 인터넷을 쓰기 위한 것이며 GKE 접속 허용과는 무관합니다.
+- **배스천**은 임시 외부 IP를 가지지만 SSH 방화벽은 IAP 대역(35.235.240.0/20)에서만 열립니다. 로그인은 구글 계정(OS Login)이고 키 파일은 없습니다. 외부 IP는 `apt` 등 인터넷을 쓰기 위한 것이며(파드와 노드의 외부 접속은 Cloud NAT) GKE 접속 허용과는 무관합니다.
 - **Cloud SQL**은 허용 네트워크를 하나도 열지 않아 직접 접속이 안 되고, Auth Proxy(구글 계정 인증, 암호화)로만 접속합니다. 비공개 IP로 바꾸는 것은 후속 결정입니다.
 - **DB 비밀번호는 Terraform으로 만들지 않습니다.** 상태 파일에 평문으로 남기 때문입니다(아래 "DB 사용자 만들기").
 
@@ -63,6 +65,7 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 ## 비용과 끄는 법 (공식 가격 계산기로 확인 필요)
 - **노드(VM)는 켜져 있는 시간만큼 과금**됩니다. 노드가 0개이면 노드 요금이 없습니다. 한 구역(zonal) 클러스터의 관리비는 월 무료 혜택 대상으로 알려져 있습니다(**[확인 필요]**).
 - Cloud SQL(db-f1-micro)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
+- **Cloud NAT**는 만들어져 있는 동안 시간당 요금이 붙고, 밖으로 나가는 데이터 양만큼 요금이 더해집니다. 금액은 공식 가격 계산기로 확인합니다(**[확인 필요]**). 노드를 꺼도 NAT 게이트웨이 자체는 남습니다.
 - 배스천 중지: `gcloud compute instances stop news-rec-bastion --zone asia-northeast3-a`
 - **노드 켜기와 끄기**(고정 풀): 코드는 `node_count` 변경을 무시하므로 `gcloud`로 조정합니다. 상태(Airflow·MLflow 기록, 모델)는 클러스터 밖(Cloud SQL, GCS, BigQuery)에 두는 것이 전제입니다.
   - 끄기: `gcloud container clusters resize news-rec-gke --node-pool fixed --num-nodes 0 --zone asia-northeast3-a`
