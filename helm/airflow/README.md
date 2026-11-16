@@ -39,17 +39,24 @@
    ```bash
    helm upgrade --install airflow apache-airflow/airflow --version 1.22.0 --namespace airflow -f helm/airflow/values.yaml --timeout 10m
    ```
-8. 확인합니다.
+8. 확인합니다. 파드 5개(api-server, dag-processor, postgresql, scheduler, triggerer)가 모두 `Running`이어야 합니다.
    ```bash
    kubectl -n airflow get pods
    ```
+
+## 2026-11-16 설치 결과와 주의
+- 설치 완료: 14:56 KST. 파드 5개 `Running`, 웹 화면 접속 확인(베스천 터널). git sync가 저장소를 가져오는 것을 로그로 확인했습니다.
+- **권한 표(Role/RoleBinding)**: 베스천 계정에는 이를 만들 권한이 없어서 `rbac.create: false`로 설치했습니다. 설치 시 에러가 나고, 그 상태로 `helm uninstall`도 같은 이유로 실패합니다(이때는 `kubectl delete namespace airflow`로 비웁니다). KubernetesPodOperator에는 권한 표가 필요하므로 베스천 권한을 줄인 뒤 `true`로 바꾸어 `helm upgrade`합니다.
+- **디스크 한도**: 서울 리전의 SSD 계열 디스크 합계 한도가 300GB(`SSD_TOTAL_GB`)입니다. 로그 디스크 기본값(스케줄러, triggerer 각 100Gi)으로는 한도를 넘어 triggerer 디스크가 만들어지지 않았습니다. 값 파일에서 5Gi로 줄였습니다. 노드 부팅 디스크(노드당 50GB), postgres 8Gi, MLflow 10Gi와 합쳐 계산합니다.
+- **지울 때 디스크는 자동으로 지워지지 않습니다.** `helm uninstall` 뒤 `kubectl -n airflow delete pvc --all`을 실행해야 디스크가 해제됩니다(기록이 사라집니다).
+- 기본 관리자 계정은 `admin` / `admin`입니다. 접속은 베스천 터널로만 열리지만 바꿔야 합니다(아래 "확인이 남은 것").
 
 ## 접속
 공개 주소가 없습니다. 베스천에서 `kubectl -n airflow port-forward`로 접속합니다. 서비스 이름과 포트는 설치 후 `kubectl -n airflow get svc`로 확인합니다(**[확인 필요]**).
 
 ## 확인이 남은 것 (설치하면서 채웁니다)
-- 관리자 계정과 비밀번호 설정 방법(기본값은 쓰지 않고 Secret으로 설정)
-- 웹 서버 비밀 키 설정과 경고 여부
+- 관리자 계정 비밀번호 변경(현재 기본값 `admin`/`admin`). 설정 방법은 차트 문서로 확인
+- 정적 API 비밀 키 설정(설치 출력에 "동적으로 생성된 키라 재시작이 잦을 수 있다"는 경고)
 - 파드별 자원 요청과 한도(설치 후 측정), 작업 파드를 `worker` 노드 풀에 올리기 위한 toleration
 - Airflow 표시 시간대(KST)
 - `helm template`에서 값 이름이 무시되지 않았는지 이미지 목록으로 확인
