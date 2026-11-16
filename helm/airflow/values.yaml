@@ -1,0 +1,40 @@
+# Airflow 공식 Helm 차트(apache-airflow/airflow 1.22.0, Airflow 3.2.2) 설치 값. 이슈 #35.
+# 실행: helm/airflow/README.md 참고. 비공개 클러스터(NAT 없는 경우 포함)에서 받을 수 있도록
+# 이미지는 모두 우리 Artifact Registry 주소로 바꿔 둔다.
+
+# 작업을 스케줄러 파드 안에서 실행한다. 각 작업의 코드는 KubernetesPodOperator로 별도 파드에서 돈다.
+# (기본값 CeleryExecutor는 redis와 worker가 따로 필요해서 무겁다.)
+executor: LocalExecutor
+
+# 지표 수집(statsd)과 redis는 쓰지 않는다. (quay.io 이미지가 필요해서 끈다.)
+statsd:
+  enabled: false
+redis:
+  enabled: false
+
+images:
+  airflow:
+    repository: asia-northeast3-docker.pkg.dev/final-project-513508/dockerhub-mirror/apache/airflow
+    tag: "3.2.2"
+  gitSync:
+    # registry.k8s.io 이미지를 news-rec 저장소로 복사한 것(11/16).
+    repository: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/git-sync
+    tag: v4.4.2
+
+# 차트에 들어 있는 PostgreSQL(Airflow 메타데이터 저장). 갱신이 끝난 bitnamilegacy 이미지라
+# 학습용으로만 쓰고, 나중에 Cloud SQL로 바꾼다.
+postgresql:
+  image:
+    registry: asia-northeast3-docker.pkg.dev
+    repository: final-project-513508/dockerhub-mirror/bitnamilegacy/postgresql
+
+dags:
+  gitSync:
+    enabled: true
+    # 읽기 전용 deploy key(SSH)로 읽는다. 비밀 값은 값 파일에 넣지 않는다.
+    repo: git@github.com:asac-news-rec/data-ml-pipeline.git
+    branch: main
+    subPath: dags
+    # kubectl로 만든 Secret의 이름. Secret 안의 키 이름은 gitSshKey.
+    sshKeySecret: airflow-git-ssh-key
+    # knownHosts(GitHub 호스트 키)는 설치할 때 --set-file로 넘긴다. README 참고.
