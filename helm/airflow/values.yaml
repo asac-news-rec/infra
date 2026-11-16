@@ -31,10 +31,10 @@ postgresql:
 dags:
   gitSync:
     enabled: true
-    # 읽기 전용 deploy key(SSH)로 읽는다. 비밀 값은 값 파일에 넣지 않는다.
-    repo: git@github.com:asac-news-rec/data-ml-pipeline.git
+    # 조직(asac-news-rec) 정책으로 deploy key를 쓸 수 없어, 읽기 전용 개인 토큰(fine-grained PAT)으로 HTTPS 접속한다.
+    # 토큰 값은 값 파일에 넣지 않고 kubectl로 만든 Secret으로만 둔다. README 참고.
+    repo: https://github.com/asac-news-rec/data-ml-pipeline.git
     branch: main
     subPath: dags
-    # kubectl로 만든 Secret의 이름. Secret 안의 키 이름은 gitSshKey.
-    sshKeySecret: airflow-git-ssh-key
-    # knownHosts(GitHub 호스트 키)는 설치할 때 --set-file로 넘긴다. README 참고.
+    # Secret 안의 키 이름은 GITSYNC_USERNAME, GITSYNC_PASSWORD (helm template로 확인).
+    credentialsSecret: airflow-git-credentials

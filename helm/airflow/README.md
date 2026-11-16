@@ -1,6 +1,6 @@
 # Airflow (Helm)
 
-이슈 #35. Airflow 공식 Helm 차트를 `airflow` 네임스페이스에 설치합니다. DAG는 GitHub 저장소 `data-ml-pipeline`의 `dags/` 폴더에서 git sync로 가져옵니다(멘토 11/12, 11/15).
+이슈 #35. Airflow 공식 Helm 차트를 `airflow` 네임스페이스에 설치합니다. DAG는 GitHub 저장소 `data-ml-pipeline`의 `dags/` 폴더에서 git sync로 가져옵니다(멘토 11/12, 11/15). 조직 정책으로 deploy key를 쓸 수 없어 읽기 전용 개인 토큰(fine-grained PAT)으로 읽습니다.
 
 ## 구성 요약
 - 차트 `apache-airflow/airflow` 1.22.0, Airflow 3.2.2
@@ -11,29 +11,31 @@
 
 ## 설치 순서 (베스천 안에서)
 1. 노드를 켭니다(고정 노드 2개 권장). 메모리와 CPU가 모자라면 파드가 `Pending`으로 남습니다.
-2. 읽기 전용 열쇠를 만듭니다. 개인 키는 파일로만 두고 채팅이나 저장소에 올리지 않습니다.
+2. 읽기 전용 토큰을 만듭니다. 조직 정책으로 deploy key를 쓸 수 없습니다(2026-11-16 확인). GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token.
+   - Resource owner: `asac-news-rec`, Repository access: Only select repositories → `data-ml-pipeline`
+   - Repository permissions: Contents → **Read-only** (Metadata는 자동)
+   - Expiration: 2026-12-31 (최종발표 12/17 이후)
+   - 조직이 승인을 요구하면 승인 요청이 가므로 승인 뒤에 사용할 수 있습니다. 토큰은 화면에 한 번만 보이니 채팅과 저장소에 올리지 않습니다.
+3. 렌더링으로 Secret의 키 이름을 확인합니다.
    ```bash
-   ssh-keygen -t ed25519 -f ~/airflow-git-key -N "" -C "airflow-git-sync"
+   helm template airflow apache-airflow/airflow --version 1.22.0 --namespace airflow -f helm/airflow/values.yaml | grep -n -i -B1 -A4 'secretKeyRef' | grep -i -E 'git|name:|key:'
    ```
-3. 공개 키(`~/airflow-git-key.pub`)를 GitHub `data-ml-pipeline` → Settings → Deploy keys에 **쓰기 권한 없이** 등록합니다(저장소 관리자 권한이 필요합니다).
-4. GitHub 호스트 키를 받아 공식 지문과 비교합니다.
-   ```bash
-   ssh-keyscan github.com > ~/known_hosts_github
-   ssh-keygen -lf ~/known_hosts_github
-   ```
-   출력된 지문이 GitHub 문서의 "GitHub's SSH key fingerprints"와 같은지 확인합니다.
-5. 네임스페이스와 Secret을 만듭니다.
+   `GITSYNC_USERNAME`, `GITSYNC_PASSWORD`가 나와야 합니다. 다르게 나오면 아래 Secret의 키 이름을 그에 맞춥니다.
+4. 네임스페이스와 Secret을 만듭니다. 토큰은 화면에 보이지 않게 입력합니다.
    ```bash
    kubectl create namespace airflow
-   kubectl -n airflow create secret generic airflow-git-ssh-key --from-file=gitSshKey=$HOME/airflow-git-key
+   read -rsp "토큰 붙여넣기: " T; echo
+   kubectl -n airflow create secret generic airflow-git-credentials --from-literal=GITSYNC_USERNAME=<GitHub-아이디> --from-literal=GITSYNC_PASSWORD="$T"
+   unset T
    ```
-6. 개인 키 파일을 지웁니다(Secret에 들어갔습니다).
+5. 외부 접속(NAT)이 준비되었는지 확인합니다(이슈 #36).
+6. 설치 전에 Secret이 생겼는지 확인합니다.
    ```bash
-   shred -u ~/airflow-git-key
+   kubectl -n airflow get secret airflow-git-credentials
    ```
 7. 설치합니다.
    ```bash
-   helm upgrade --install airflow apache-airflow/airflow --version 1.22.0 --namespace airflow -f helm/airflow/values.yaml --set-file dags.gitSync.knownHosts=$HOME/known_hosts_github --timeout 10m
+   helm upgrade --install airflow apache-airflow/airflow --version 1.22.0 --namespace airflow -f helm/airflow/values.yaml --timeout 10m
    ```
 8. 확인합니다.
    ```bash
