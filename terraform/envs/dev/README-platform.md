@@ -79,3 +79,6 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 | `kubectl`이 시간 초과 | 내 컴퓨터가 아니라 **배스천 안에서** 실행하는지, `--internal-ip` 옵션을 붙였는지 확인 |
 | 파드가 `ImagePullBackOff` | 이미지가 `dockerhub-mirror`(또는 `news-rec`) 주소인지 확인. Docker Hub가 아닌 레지스트리의 이미지는 받지 못할 수 있음 |
 | 이미 같은 이름의 Cloud SQL이 있다 | 삭제된 인스턴스 이름은 일정 기간 다시 쓸 수 없습니다. `name_prefix`를 바꾸거나 기다립니다 |
+
+## MLflow 기록 저장소 (임시 예외)
+위 설명의 "상태는 클러스터 밖(Cloud SQL, GCS, BigQuery)에 둔다"는 전제에 **현재 MLflow 기록은 예외**입니다. 실험 기록과 모델 버전은 클러스터 디스크(PVC)의 SQLite 파일에 있어서 노드를 꺼도 남지만 PVC를 지우면 사라집니다. 롤백과 백업은 `k8s/mlflow/README.md`를 보세요. Cloud SQL로 옮기는 것은 후속 작업입니다.

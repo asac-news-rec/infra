@@ -1,6 +1,6 @@
 # 에이전트 프로젝트 참조
 
-> Last Updated: 2026-11-09
+> Last Updated: 2026-11-16
 
 프로젝트 구조, 폴더 책임, 팀 소유권을 빠르게 찾기 위한 문서입니다.
 "X는 어디에 있는가?", "Y는 누가 소유하는가?" 질문에 답합니다.
@@ -49,10 +49,13 @@ terraform/                    # GCP 계정 발급 후 시작
 
 helm/                         # GKE 안에 올릴 앱 (Terraform 이후)
 ├── airflow/
-├── mlflow/
+├── mlflow/                   # 11/14 1차 구성은 k8s/mlflow/ YAML(kubectl apply). Helm 차트로 전환 예정
 ├── valkey/                   # Valkey를 직접 설치하는 경우 [미정]
 ├── inference-server/
 └── logging-server/           # 로깅 서버를 GKE에 둘 경우 [미정]
+
+k8s/                          # kubectl apply로 올리는 YAML. MLflow 1차 구성(k8s/mlflow/), 차트 전환 전까지
+docker/                       # 직접 빌드해 news-rec 저장소에 올리는 이미지(docker/mlflow/)
 
 docs/                         # 운영 문서가 필요해지면 생성
 ```
