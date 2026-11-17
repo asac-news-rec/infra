@@ -41,6 +41,13 @@ terraform apply tfplan
 - GKE 클러스터 생성은 시간이 걸립니다(보통 10분 안팎, 제 추정). Cloud SQL도 몇 분 걸립니다.
 - 배스천 VM 시작 스크립트가 `kubectl`과 GKE 인증 도구를 설치합니다. 실패하면 VM에 접속해 `sudo apt-get install -y kubectl google-cloud-cli-gke-gcloud-auth-plugin`을 실행합니다.
 
+## Airflow 로그 저장소 (이슈 #50)
+`airflow-logs.tf`가 만듭니다. Airflow 로그를 디스크 대신 GCS에 저장해, 로그가 폭증해도 디스크가 가득 차 서버가 멈추지 않게 합니다(멘토 11/16).
+- 버킷 `<프로젝트-ID>-airflow-logs`: 생성 60일이 지난 객체를 자동 삭제하는 **수명주기 규칙**(`age = 60`, `Delete`)이 있습니다. GCS의 "보존 정책(retention policy)"은 삭제를 **막는** 기능이라 쓰지 않습니다.
+- 권한: GCP 서비스 계정 `airflow`에 이 버킷의 객체 읽기·쓰기(`roles/storage.objectUser`, 이 버킷에만). 작업 로그는 스케줄러·트리거러가 올리고, 화면은 API 서버가 읽으므로 `airflow-api-server`도 Workload Identity로 연결했습니다.
+- Airflow 쪽 설정: `config.logging.remote_logging=True`, `config.logging.remote_base_log_folder=gs://<프로젝트-ID>-airflow-logs/logs`, `apiServer`의 서비스 계정 주석 `iam.gke.io/gcp-service-account`. 설치 값은 `helm/airflow`(이슈 #35)에서 관리합니다.
+- 로그 디스크(5Gi)는 작업 중 임시 파일용으로 남겨 둡니다.
+
 ## 클러스터에 접속하기
 클러스터는 비공개라서 **배스천에서만** 접속합니다.
 ```bash
