@@ -14,6 +14,7 @@
 | `gke-nodepools.tf` | 노드 풀 2개(`fixed`, `worker`), 노드용 서비스 계정과 권한 | `fixed`는 항상 떠 있어야 하는 것, `worker`는 작업용(Spot, 일이 없으면 0개) |
 | `registry.tf` | (추가) `dockerhub-mirror` 저장소 | 비공개 노드가 인터넷 없이 Docker Hub 이미지를 받는 복사본 |
 | `cloudsql.tf` | Cloud SQL 인스턴스 + DB `newsdb` | 뉴스 DB. g1-small(공유 코어), 삭제 방지, 매일 백업 |
+| `cloudsql-databases.tf` | DB `behavior_logs`, `airflow`, `mlflow` | 같은 인스턴스 안에서 서비스별 DB 분리(멘토 11/5). 계정은 Terraform 밖에서 생성 |
 
 ## 설계 결정
 - **GKE는 비공개 Standard 클러스터**입니다(멘토 11/5, 이슈 #21). 노드와 관리 주소 모두 공개 IP가 없고, 관리 주소에는 VPC 서브넷(배스천이 있는 곳) 안에서만 접속됩니다. 내 컴퓨터에서 직접 `kubectl`은 되지 않으며 **배스천을 거쳐야** 합니다.
