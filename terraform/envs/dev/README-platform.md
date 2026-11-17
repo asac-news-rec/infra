@@ -15,6 +15,7 @@
 | `registry.tf` | (추가) `dockerhub-mirror` 저장소 | 비공개 노드가 인터넷 없이 Docker Hub 이미지를 받는 복사본 |
 | `cloudsql.tf` | Cloud SQL 인스턴스 + DB `newsdb` | 뉴스 DB. g1-small(공유 코어), 삭제 방지, 매일 백업 |
 | `cloudsql-databases.tf` | DB `behavior_logs`, `airflow`, `mlflow` | 같은 인스턴스 안에서 서비스별 DB 분리(멘토 11/5). 계정은 Terraform 밖에서 생성 |
+| `cloudsql-proxy.tf` | 서비스 계정 `cloudsql-proxy`, `roles/cloudsql.client`, Workload Identity 연결 | Auth Proxy용. 파드 매니페스트는 `k8s/cloud-sql-proxy/` |
 
 ## 설계 결정
 - **GKE는 비공개 Standard 클러스터**입니다(멘토 11/5, 이슈 #21). 노드와 관리 주소 모두 공개 IP가 없고, 관리 주소에는 VPC 서브넷(배스천이 있는 곳) 안에서만 접속됩니다. 내 컴퓨터에서 직접 `kubectl`은 되지 않으며 **배스천을 거쳐야** 합니다.

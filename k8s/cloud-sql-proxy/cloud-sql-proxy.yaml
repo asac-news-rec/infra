@@ -1,0 +1,73 @@
+# Cloud SQL Auth Proxy. airflow 네임스페이스 안에서 cloud-sql-proxy:5432로 접속하면 news-rec-pg로 연결된다.
+# GCP 서비스 계정(cloudsql-proxy)은 Workload Identity로 연결한다(terraform/envs/dev/cloudsql-proxy.tf).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-sql-proxy
+  namespace: airflow
+  annotations:
+    iam.gke.io/gcp-service-account: cloudsql-proxy@final-project-513508.iam.gserviceaccount.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-sql-proxy
+  namespace: airflow
+  labels:
+    app: cloud-sql-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-sql-proxy
+  template:
+    metadata:
+      labels:
+        app: cloud-sql-proxy
+    spec:
+      serviceAccountName: cloud-sql-proxy
+      containers:
+        - name: cloud-sql-proxy
+          image: asia.gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.28.0
+          args:
+            - "--address=0.0.0.0"
+            - "--port=5432"
+            - "--structured-logs"
+            - "final-project-513508:asia-northeast3:news-rec-pg"
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-sql-proxy
+  namespace: airflow
+spec:
+  type: ClusterIP
+  selector:
+    app: cloud-sql-proxy
+  ports:
+    - port: 5432
+      targetPort: 5432
