@@ -56,7 +56,7 @@ kubectl get namespaces
 
 ## Airflow 서비스 계정 (이슈 #37)
 `airflow-sa.tf`가 만듭니다. Airflow 작업이 키 파일 없이 GCS에 접근하는 신분입니다.
-- GCP 서비스 계정 `airflow`를 Workload Identity로 쿠버네티스 서비스 계정 `airflow-scheduler`, `airflow-triggerer`, `airflow-worker`(`airflow` 네임스페이스)와 연결합니다(MLflow와 같은 방식). 파드가 이 계정을 쓰려면 Helm 값에서 각 서비스 계정에 `iam.gke.io/gcp-service-account: airflow@<프로젝트-ID>.iam.gserviceaccount.com` 주석을 붙여야 합니다(이 PR에는 포함되지 않음).
+- GCP 서비스 계정 `airflow`를 Workload Identity로 쿠버네티스 서비스 계정 `airflow-scheduler`, `airflow-triggerer`, `airflow-task`(`airflow` 네임스페이스. `airflow-task`는 KubernetesPodOperator 작업 파드 전용이고 차트가 만들지 않아 `kubectl`로 따로 만듭니다)와 연결합니다(MLflow와 같은 방식). 파드가 이 계정을 쓰려면 Helm 값에서 각 서비스 계정에 `iam.gke.io/gcp-service-account: airflow@<프로젝트-ID>.iam.gserviceaccount.com` 주석을 붙여야 합니다(이 PR에는 포함되지 않음).
 - 권한은 `<프로젝트-ID>-raw-logs` 버킷의 `served/`, `actions/`, `manifests/` 경로에 한해 `storage.objects.create`, `get`, `delete`만 줍니다(목록 조회, 덮어쓰기 없음). 사용자 지정 역할과 조건부 권한으로 구현했습니다.
 - 태스크 환경 값: `GOOGLE_CLOUD_PROJECT=<프로젝트-ID>`, `GCS_BUCKET=<프로젝트-ID>-raw-logs`, `GCS_PREFIX`는 쓰지 않습니다.
 

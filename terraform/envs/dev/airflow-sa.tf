@@ -8,8 +8,9 @@ resource "google_service_account" "airflow" {
 }
 
 locals {
-  # Airflow 네임스페이스의 쿠버네티스 서비스 계정: 스케줄러(LocalExecutor 작업), 트리거러, 작업 파드(worker)
-  airflow_ksas = ["airflow-scheduler", "airflow-triggerer", "airflow-worker"]
+  # Airflow 네임스페이스의 쿠버네티스 서비스 계정: 스케줄러(LocalExecutor 작업), 트리거러, KubernetesPodOperator 작업 파드 전용 계정(airflow-task).
+  # airflow-task는 차트가 만들지 않으므로 kubectl로 따로 만든다. LocalExecutor에서는 차트가 airflow-worker 계정을 만들지 않는다(11/17 확인).
+  airflow_ksas = ["airflow-scheduler", "airflow-triggerer", "airflow-task"]
   # 행동 로그 내보내기 DAG가 쓰는 raw-logs 경로
   airflow_export_dirs = ["served", "actions", "manifests"]
 }
