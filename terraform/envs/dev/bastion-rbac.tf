@@ -1,0 +1,29 @@
+# 설치 계정(베스천)이 클러스터 안에 쿠버네티스 권한 규칙(Role, RoleBinding)을 만들 수 있게 한다 (이슈 #43).
+# Airflow 같은 Helm 차트가 설치할 때 이 규칙을 만든다. 11/16 Airflow 설치에서 베스천 계정(container.developer)에
+# 이 권한이 없어 "roles ... forbidden"으로 막혔고, 임시로 rbac.create=false로 설치했다.
+# container.admin(클러스터 전체 관리자)은 너무 넓어서, 필요한 권한만 담은 사용자 지정 역할을 쓴다.
+resource "google_project_iam_custom_role" "bastion_rbac" {
+  project     = var.project_id
+  role_id     = "${replace(var.name_prefix, "-", "_")}_bastion_rbac"
+  title       = "Bastion RBAC editor"
+  description = "GKE 안에 Role/RoleBinding을 만들고 고칠 수 있다. Helm 차트 설치용."
+
+  permissions = [
+    "container.roles.create",
+    "container.roles.get",
+    "container.roles.list",
+    "container.roles.update",
+    "container.roles.delete",
+    "container.roleBindings.create",
+    "container.roleBindings.get",
+    "container.roleBindings.list",
+    "container.roleBindings.update",
+    "container.roleBindings.delete",
+  ]
+}
+
+resource "google_project_iam_member" "bastion_rbac" {
+  project = var.project_id
+  role    = google_project_iam_custom_role.bastion_rbac.id
+  member  = "serviceAccount:${google_service_account.bastion.email}"
+}
