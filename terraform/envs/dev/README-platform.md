@@ -40,6 +40,7 @@ terraform apply tfplan
 ```
 - GKE 클러스터 생성은 시간이 걸립니다(보통 10분 안팎, 제 추정). Cloud SQL도 몇 분 걸립니다.
 - 배스천 VM 시작 스크립트가 `kubectl`과 GKE 인증 도구를 설치합니다. 실패하면 VM에 접속해 `sudo apt-get install -y kubectl google-cloud-cli-gke-gcloud-auth-plugin`을 실행합니다.
+- 배스천의 부팅 이미지는 Debian 13입니다. Debian 12 이미지(커널 6.1.0-55, 2026-11-14 빌드)에서 VM이 반복해서 멈춰 바꿨습니다(이슈 #46). 이미지를 바꾸면 VM이 교체되며, 교체 뒤에는 접속 권한(OS Login, IAP)을 Terraform으로 다시 만들어야 할 수 있습니다.
 
 ## 클러스터에 접속하기
 클러스터는 비공개라서 **배스천에서만** 접속합니다.
