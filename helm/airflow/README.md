@@ -46,10 +46,20 @@
 
 ## 2026-11-16 설치 결과와 주의
 - 설치 완료: 14:56 KST. 파드 5개 `Running`, 웹 화면 접속 확인(베스천 터널). git sync가 저장소를 가져오는 것을 로그로 확인했습니다.
-- **권한 표(Role/RoleBinding)**: 베스천 계정에는 이를 만들 권한이 없어서 `rbac.create: false`로 설치했습니다. 설치 시 에러가 나고, 그 상태로 `helm uninstall`도 같은 이유로 실패합니다(이때는 `kubectl delete namespace airflow`로 비웁니다). KubernetesPodOperator에는 권한 표가 필요하므로 베스천 권한을 줄인 뒤 `true`로 바꾸어 `helm upgrade`합니다.
+- **권한 표(Role/RoleBinding)**: 베스천 계정에는 이를 만들 권한이 없어서 `rbac.create: false`로 설치했습니다. 설치 시 에러가 나고, 그 상태로 `helm uninstall`도 같은 이유로 실패합니다(이때는 `kubectl delete namespace airflow`로 비웁니다). 11/17에 베스천 권한을 주어(이슈 #43) `true`로 `helm upgrade`했습니다. Role 2개(`airflow-pod-launcher-role`, `airflow-pod-log-reader-role`)가 만들어지고, Airflow 서비스 계정으로 시험 파드가 만들어지는 것을 확인했습니다(13:55).
 - **디스크 한도**: 서울 리전의 SSD 계열 디스크 합계 한도가 300GB(`SSD_TOTAL_GB`)입니다. 로그 디스크 기본값(스케줄러, triggerer 각 100Gi)으로는 한도를 넘어 triggerer 디스크가 만들어지지 않았습니다. 값 파일에서 5Gi로 줄였습니다. 노드 부팅 디스크(노드당 50GB), postgres 8Gi, MLflow 10Gi와 합쳐 계산합니다.
 - **지울 때 디스크는 자동으로 지워지지 않습니다.** `helm uninstall` 뒤 `kubectl -n airflow delete pvc --all`을 실행해야 디스크가 해제됩니다(기록이 사라집니다).
 - 기본 관리자 계정은 `admin` / `admin`입니다. 접속은 베스천 터널로만 열리지만 바꿔야 합니다(아래 "확인이 남은 것").
+
+## 2026-11-17 변경: GCP 접근(Workload Identity, 이슈 #37)
+- Terraform(`airflow-sa.tf`)이 GCP 서비스 계정 `airflow`와 Workload Identity 연결(`airflow-scheduler`, `airflow-triggerer`, `airflow-task`)을 만듭니다. `values.yaml`의 `scheduler`, `triggerer` 서비스 계정 주석이 이 연결을 씁니다.
+- `airflow-task`는 KubernetesPodOperator 작업 파드 전용 서비스 계정으로, 차트가 만들지 않아 `kubectl`로 따로 만듭니다(작업에서 `service_account_name="airflow-task"`를 지정).
+  ```bash
+  kubectl -n airflow create serviceaccount airflow-task
+  kubectl -n airflow annotate serviceaccount airflow-task iam.gke.io/gcp-service-account=airflow@<프로젝트-ID>.iam.gserviceaccount.com
+  ```
+- 시험(11/17 16:07): 스케줄러 파드에서 `raw-logs`의 `served/` 경로 생성·읽기·삭제 성공, 허용 밖 경로는 403.
+- **`helm upgrade`할 때 베스천의 값 파일이 오래되었을 수 있습니다.** 11/17에는 베스천의 `~/airflow-values.yaml`이 실제 설치 값과 달라 `updates to statefulset spec ... forbidden`이 났습니다. 저장소의 `helm/airflow/values.yaml`을 베스천에 복사해 쓰거나, 일부만 바꿀 때는 `--reuse-values --set <키>=<값>`으로 실제 설치된 값을 재사용합니다.
 
 ## 접속
 공개 주소가 없습니다. 베스천에서 `kubectl -n airflow port-forward`로 접속합니다. 서비스 이름과 포트는 설치 후 `kubectl -n airflow get svc`로 확인합니다(**[확인 필요]**).

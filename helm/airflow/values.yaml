@@ -28,11 +28,10 @@ postgresql:
     registry: asia-northeast3-docker.pkg.dev
     repository: final-project-513508/dockerhub-mirror/bitnamilegacy/postgresql
 
-# 임시: 베스천 계정(container.developer)에 Role/RoleBinding을 만들 권한이 없어서 11/16에는 끈다.
-# 설치하면 "roles ... forbidden" 에러가 난다. KubernetesPodOperator(11/18)에는 필요하므로
-# 권한을 준 뒤 true로 되돌린다.
+# Airflow 서비스 계정이 작업 파드를 만들 수 있게 하는 Role/RoleBinding을 차트가 만든다.
+# 11/16에는 베스천 계정에 만들 권한이 없어 false로 설치했고, 11/17에 베스천 권한을 주어(이슈 #43) true로 바꿨다.
 rbac:
-  create: false
+  create: true
 
 # 로그 디스크 기본값이 각각 100Gi라서 서울 리전 SSD 한도(SSD_TOTAL_GB 300GB)를 넘어 triggerer 디스크가
 # 만들어지지 않았다(11/16). 5Gi로 줄인다. LocalExecutor에서는 스케줄러 디스크도 workers.persistence를 따른다.
@@ -40,7 +39,15 @@ rbac:
 workers:
   persistence:
     size: 5Gi
+scheduler:
+  serviceAccount:
+    annotations:
+      # Workload Identity: 이 쿠버네티스 서비스 계정이 GCP 서비스 계정 airflow로 GCS에 접근한다(이슈 #37).
+      iam.gke.io/gcp-service-account: airflow@final-project-513508.iam.gserviceaccount.com
 triggerer:
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: airflow@final-project-513508.iam.gserviceaccount.com
   persistence:
     size: 5Gi
 
