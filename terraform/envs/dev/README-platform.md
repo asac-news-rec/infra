@@ -60,6 +60,14 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 ```
 `--prompt-for-password` 옵션 지원 여부는 gcloud 버전에 따라 다릅니다(**[확인 필요]**). 비밀번호는 Secret Manager에 따로 보관합니다. 채팅과 레포에는 올리지 않습니다.
 
+## GitHub Actions 인증과 프런트 배포 계정 (이슈 #40)
+`github-wif.tf`가 만듭니다. GitHub Actions가 **키 파일 없이** GCP에 인증하게 합니다(Workload Identity Federation).
+- WIF 풀 `github`와 GitHub 공급자 `github`: 조직 `asac-news-rec`의 실행만 받습니다(`attribute_condition`).
+- 배포 서비스 계정 `frontend-deploy`: `asac-news-rec/frontend`의 `frontend-production` 환경 실행만 이 계정을 대신 쓸 수 있습니다(`repo:asac-news-rec/frontend:environment:frontend-production`). 브랜치(`main`) 제한은 GitHub 환경 설정(deployment branches)으로 합니다.
+- 권한: `news-rec` 이미지 저장소 업로드(`artifactregistry.writer`), Cloud Run `news-feed` 서비스 갱신(`run.developer`, 그 서비스에만), 런타임 계정 `news-feed-run`을 쓸 권한(`serviceAccountUser`, 그 계정에만).
+- 워크플로에서 쓰는 값: 공급자 `projects/<프로젝트-번호>/locations/global/workloadIdentityPools/github/providers/github`, 서비스 계정 `frontend-deploy@<프로젝트-ID>.iam.gserviceaccount.com`. 워크플로 권한에 `id-token: write`가 필요합니다.
+- **남은 것**: 백엔드 배포(`github-actions` 계정)는 아직 서비스 계정 키 파일(2026-11-10 생성)을 씁니다. WIF로 옮기고 키를 삭제하는 것은 후속 이슈로 합니다.
+
 ## 비용과 끄는 법 (공식 가격 계산기로 확인 필요)
 - **노드(VM)는 켜져 있는 시간만큼 과금**됩니다. 노드가 0개이면 노드 요금이 없습니다. 한 구역(zonal) 클러스터의 관리비는 월 무료 혜택 대상으로 알려져 있습니다(**[확인 필요]**).
 - Cloud SQL(db-f1-micro)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
