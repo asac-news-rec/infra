@@ -61,6 +61,11 @@
 - 시험(11/17 16:07): 스케줄러 파드에서 `raw-logs`의 `served/` 경로 생성·읽기·삭제 성공, 허용 밖 경로는 403.
 - **`helm upgrade`할 때 베스천의 값 파일이 오래되었을 수 있습니다.** 11/17에는 베스천의 `~/airflow-values.yaml`이 실제 설치 값과 달라 `updates to statefulset spec ... forbidden`이 났습니다. 저장소의 `helm/airflow/values.yaml`을 베스천에 복사해 쓰거나, 일부만 바꿀 때는 `--reuse-values --set <키>=<값>`으로 실제 설치된 값을 재사용합니다.
 
+## 2026-11-17 변경: 로그를 GCS에 저장(이슈 #50)
+- 작업 로그는 버킷 `final-project-513508-airflow-logs`의 `logs/` 아래에 저장됩니다(Terraform `airflow-logs.tf`, 60일 뒤 자동 삭제). `values.yaml`의 `config.logging`과 `apiServer` 서비스 계정 주석이 이 설정입니다.
+- 설정은 환경 변수가 아니라 `airflow.cfg`(ConfigMap)로 들어가므로 파드에서 `env | grep AIRFLOW__LOGGING`으로 확인되지 않습니다. DAG를 실행해 GCS에 로그 파일이 생기는지 봅니다: `gcloud storage ls -r gs://final-project-513508-airflow-logs/`
+- 로그 디스크(5Gi)는 작업 중 임시 파일용으로 남겨 둡니다.
+
 ## 접속
 공개 주소가 없습니다. 베스천에서 `kubectl -n airflow port-forward`로 접속합니다. 서비스 이름과 포트는 설치 후 `kubectl -n airflow get svc`로 확인합니다(**[확인 필요]**).
 

@@ -51,6 +51,16 @@ triggerer:
   persistence:
     size: 5Gi
 
+# 작업 로그를 디스크 대신 GCS에 저장하고(60일 뒤 자동 삭제, 이슈 #50) 화면(API 서버)이 GCS에서 읽어 보여 준다.
+config:
+  logging:
+    remote_logging: "True"
+    remote_base_log_folder: "gs://final-project-513508-airflow-logs/logs"
+apiServer:
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: airflow@final-project-513508.iam.gserviceaccount.com
+
 dags:
   gitSync:
     enabled: true
