@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-init
+data:
+  01-create-logging.sql: |
+    \getenv logging_password LOGGING_POSTGRES_PASSWORD
+    CREATE ROLE logging LOGIN PASSWORD :'logging_password';
+    CREATE DATABASE logging OWNER logging;
+    REVOKE CONNECT ON DATABASE logging FROM PUBLIC;

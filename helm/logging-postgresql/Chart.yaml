@@ -1,0 +1,6 @@
+apiVersion: v2
+name: logging-postgresql
+description: Dedicated PostgreSQL for behavior logging
+type: application
+version: 0.1.0
+appVersion: "16.16"
