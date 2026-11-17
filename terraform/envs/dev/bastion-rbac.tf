@@ -14,6 +14,10 @@ resource "google_project_iam_custom_role" "bastion_rbac" {
     "container.roles.list",
     "container.roles.update",
     "container.roles.delete",
+    # escalate, bind: 쿠버네티스는 자신이 가진 RBAC 권한만 새 Role에 담게 하고, GCP IAM 권한은 이 검사에 포함되지 않는다
+    # (11/17 helm upgrade "attempting to grant RBAC permissions not currently held"). 네임스페이스 Role 범위로 한정.
+    "container.roles.escalate",
+    "container.roles.bind",
     "container.roleBindings.create",
     "container.roleBindings.get",
     "container.roleBindings.list",
