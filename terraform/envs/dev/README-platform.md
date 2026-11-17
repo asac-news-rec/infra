@@ -57,7 +57,7 @@ kubectl get namespaces
 
 ## DB 사용자 만들기 (비밀번호는 코드에 쓰지 않음)
 ```bash
-gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
+gcloud sql users create news_app --instance=news-rec-pg --prompt-for-password
 ```
 `--prompt-for-password` 옵션 지원 여부는 gcloud 버전에 따라 다릅니다(**[확인 필요]**). 비밀번호는 Secret Manager에 따로 보관합니다. 채팅과 레포에는 올리지 않습니다.
 
