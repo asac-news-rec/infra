@@ -58,9 +58,12 @@ kubectl get namespaces
 
 ## DB 사용자 만들기 (비밀번호는 코드에 쓰지 않음)
 ```bash
-gcloud sql users create news_app --instance=news-rec-pg --prompt-for-password
+PW="$(openssl rand -base64 24 | tr -d '/+=\n')"; printf '%s' "$PW" | gcloud secrets create logging-api-db-password --data-file=- && gcloud sql users create logging_api --instance=news-rec-pg --password="$PW"; unset PW
 ```
-`--prompt-for-password` 옵션 지원 여부는 gcloud 버전에 따라 다릅니다(**[확인 필요]**). 비밀번호는 Secret Manager에 따로 보관합니다. 채팅과 레포에는 올리지 않습니다.
+gcloud 592.0.0에는 `--prompt-for-password` 옵션이 없고 `--password`만 있습니다. 위 명령은 비밀번호를 화면에 출력하지 않고 Secret Manager에 먼저 저장한 뒤 같은 값으로 계정을 만듭니다. 비밀번호는 채팅과 레포에 올리지 않습니다.
+- 계정: `logging_api`, `logging_airflow`(시크릿 `logging-api-db-password`, `logging-airflow-db-password`). 권한(GRANT)은 서비스 담당자가 검증한 SQL로 부여합니다.
+- 접속: 클러스터 안에서 `cloud-sql-proxy.airflow.svc:5432`(Auth Proxy, `k8s/cloud-sql-proxy/`).
+- `max_connections`는 g1-small에서 50입니다(2026-11-17 실측). 서비스별 연결 풀 크기를 합쳐 이 값을 넘지 않게 합니다.
 
 ## 비용과 끄는 법 (공식 가격 계산기로 확인 필요)
 - **노드(VM)는 켜져 있는 시간만큼 과금**됩니다. 노드가 0개이면 노드 요금이 없습니다. 한 구역(zonal) 클러스터의 관리비는 월 무료 혜택 대상으로 알려져 있습니다(**[확인 필요]**).
