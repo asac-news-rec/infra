@@ -1,4 +1,4 @@
-# 뉴스 DB용 Cloud SQL(PostgreSQL). 가장 작은 사양으로 시작한다.
+# 뉴스 DB용 Cloud SQL(PostgreSQL). 공유 코어 사양(db_tier)으로 운영한다. 여러 서비스가 함께 쓰므로 f1-micro에서 g1-small로 올렸다.
 # 공개 IP는 있지만 "허용 네트워크"를 하나도 열지 않아서 직접 접속은 막혀 있다.
 # 접속은 Cloud SQL Auth Proxy(구글 계정 인증, 암호화)로만 한다.
 # DB 사용자 비밀번호는 코드와 상태 파일에 남기지 않기 위해 Terraform으로 만들지 않는다(README 참고).

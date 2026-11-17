@@ -13,7 +13,7 @@
 | `gke.tf` | GKE Standard 클러스터 1개(비공개, 한 구역) | Valkey, MLflow, 추론 서버(필요하면 Airflow)가 올라갈 곳. 관리 주소에 공개 IP가 없고 배스천에서만 접속 |
 | `gke-nodepools.tf` | 노드 풀 2개(`fixed`, `worker`), 노드용 서비스 계정과 권한 | `fixed`는 항상 떠 있어야 하는 것, `worker`는 작업용(Spot, 일이 없으면 0개) |
 | `registry.tf` | (추가) `dockerhub-mirror` 저장소 | 비공개 노드가 인터넷 없이 Docker Hub 이미지를 받는 복사본 |
-| `cloudsql.tf` | Cloud SQL 인스턴스 + DB `newsdb` | 뉴스 DB. 가장 작은 사양, 삭제 방지, 매일 백업 |
+| `cloudsql.tf` | Cloud SQL 인스턴스 + DB `newsdb` | 뉴스 DB. g1-small(공유 코어), 삭제 방지, 매일 백업 |
 
 ## 설계 결정
 - **GKE는 비공개 Standard 클러스터**입니다(멘토 11/5, 이슈 #21). 노드와 관리 주소 모두 공개 IP가 없고, 관리 주소에는 VPC 서브넷(배스천이 있는 곳) 안에서만 접속됩니다. 내 컴퓨터에서 직접 `kubectl`은 되지 않으며 **배스천을 거쳐야** 합니다.
@@ -62,7 +62,7 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 
 ## 비용과 끄는 법 (공식 가격 계산기로 확인 필요)
 - **노드(VM)는 켜져 있는 시간만큼 과금**됩니다. 노드가 0개이면 노드 요금이 없습니다. 한 구역(zonal) 클러스터의 관리비는 월 무료 혜택 대상으로 알려져 있습니다(**[확인 필요]**).
-- Cloud SQL(db-f1-micro)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
+- Cloud SQL(db-g1-small)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
 - 배스천 중지: `gcloud compute instances stop news-rec-bastion --zone asia-northeast3-a`
 - **노드 켜기와 끄기**(고정 풀): 코드는 `node_count` 변경을 무시하므로 `gcloud`로 조정합니다. 상태(Airflow·MLflow 기록, 모델)는 클러스터 밖(Cloud SQL, GCS, BigQuery)에 두는 것이 전제입니다.
   - 끄기: `gcloud container clusters resize news-rec-gke --node-pool fixed --num-nodes 0 --zone asia-northeast3-a`
