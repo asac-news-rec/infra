@@ -5,6 +5,12 @@ variable "data_ml_users" {
   description = "data-ml 개발자의 구글 계정 목록. 코드에 적지 않고 로컬 terraform.tfvars로 받는다."
   type        = list(string)
   default     = []
+
+  # 값을 넣지 않고 apply하면 이미 적용된 권한(jobUser, dataEditor, 버킷 권한)이 조용히 삭제된다. 빈 목록을 막는다.
+  validation {
+    condition     = length(var.data_ml_users) > 0
+    error_message = "data_ml_users가 비어 있습니다. terraform.tfvars에 data-ml 계정을 넣어 주세요(terraform.tfvars.example 참고)."
+  }
 }
 
 locals {
