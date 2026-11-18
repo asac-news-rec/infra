@@ -7,11 +7,12 @@ resource "google_service_account" "mlflow_server" {
   display_name = "MLflow server (GKE)"
 }
 
-# 이 버킷에서만 파일을 읽고 쓰고 지울 수 있다(다른 버킷은 불가).
-# 필요 이상이면 roles/storage.objectUser로 줄이는 것을 후속으로 검토한다.
+# 이 버킷에서만 파일을 읽고 쓰고 지울 수 있다(다른 버킷은 불가). 범위는 버킷 전체이고 mlflow/ 경로로 좁히지는 않았다.
+# objectAdmin은 객체의 IAM 정책까지 바꿀 수 있어서, 읽기·쓰기·삭제만 가진 objectUser로 줄였다(PR #34 리뷰).
+# mlflow/ 경로로 더 좁히는 것은 목록 조회와 조건부 권한의 제약을 확인한 뒤 후속으로 한다.
 resource "google_storage_bucket_iam_member" "mlflow_server_model_artifacts" {
   bucket = google_storage_bucket.model_artifacts.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${google_service_account.mlflow_server.email}"
 }
 
