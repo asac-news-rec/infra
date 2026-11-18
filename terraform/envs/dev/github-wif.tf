@@ -54,10 +54,11 @@ resource "google_service_account" "frontend_deploy" {
 }
 
 # asac-news-rec/frontend 의 frontend-production 환경 실행만 이 계정을 대신 쓸 수 있다.
+# subject는 이름이 아니라 불변 ID(소유자, 저장소 번호)가 들어간 형식이다(frontend 저장소의 use_immutable_subject: true).
 resource "google_service_account_iam_member" "frontend_deploy_wif" {
   service_account_id = google_service_account.frontend_deploy.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "${local.github_subject_prefix}/repo:asac-news-rec/frontend:environment:frontend-production"
+  member             = "${local.github_subject_prefix}/repo:asac-news-rec@349611381/frontend@1437850587:environment:frontend-production"
 }
 
 # 이미지 창고(news-rec)에 이미지를 올릴 수 있다.
