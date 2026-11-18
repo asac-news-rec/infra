@@ -66,6 +66,28 @@
 - 설정은 환경 변수가 아니라 `airflow.cfg`(ConfigMap)로 들어가므로 파드에서 `env | grep AIRFLOW__LOGGING`으로 확인되지 않습니다. DAG를 실행해 GCS에 로그 파일이 생기는지 봅니다: `gcloud storage ls -r gs://final-project-513508-airflow-logs/`
 - 로그 디스크(5Gi)는 작업 중 임시 파일용으로 남겨 둡니다.
 
+## 2026-11-18 변경: 로깅 내보내기 이미지와 DB 접속 정보 (이슈 #37, #52)
+세호 님의 로깅 내보내기 DAG(`export_behavior_logs.py`)는 LocalExecutor라서 스케줄러 파드 안에서 돕니다. 그래서 DAG가 쓰는 코드와 DB 접속 정보가 Airflow 이미지와 환경 변수에 있어야 합니다.
+- 이미지: `docker/airflow/Dockerfile`. 기본 Airflow 3.2.2에 프런트 레포의 `services/logging-server/logging_service/`를 `/opt/logging-server/logging_service`로 복사하고, `PYTHONPATH=/opt/logging-server`, `psycopg[binary]==3.3.8`, `google-cloud-storage==3.17.1`을 설치합니다. 태그에는 프런트 커밋 SHA 앞 7자리를 적습니다(`3.2.2-logging-8bacd79`).
+  ```bash
+  # WSL: 프런트 레포를 해당 SHA로 받아 logging_service 폴더만 빌드 폴더에 복사한 뒤 빌드·푸시
+  gh repo clone asac-news-rec/frontend frontend-src && cd frontend-src && git checkout 8bacd79cef622b67aef9cc18ee9bae7bcdfce75c && cd ..
+  mkdir -p context && cp -r frontend-src/services/logging-server/logging_service context/
+  docker build -f ~/infra/docker/airflow/Dockerfile -t asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/airflow:3.2.2-logging-8bacd79 context
+  docker push asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/airflow:3.2.2-logging-8bacd79
+  ```
+- DB 접속 문자열 Secret(`logging-airflow-database-url`, 키 `LOGGING_DATABASE_URL`): 비밀번호가 화면과 베스천에 남지 않게, WSL에서 만들어 ssh 입력으로 흘려 보냅니다.
+  ```bash
+  printf 'postgresql://logging_airflow:%s@cloud-sql-proxy.airflow.svc:5432/behavior_logs' "$(gcloud secrets versions access latest --secret=logging-airflow-db-password)" | gcloud compute ssh news-rec-bastion --zone asia-northeast3-a --tunnel-through-iap --project final-project-513508 --command 'kubectl create secret generic logging-airflow-database-url -n airflow --from-file=LOGGING_DATABASE_URL=/dev/stdin'
+  ```
+  비밀번호를 바꾸면 Secret을 다시 만들고(`kubectl delete secret` 후 위 명령) 스케줄러 파드를 다시 시작합니다.
+- 적용: `values.yaml`의 `images.airflow`와 `secret`(차트의 `env`는 `valueFrom`을 받지 않아 `secret` 값을 씁니다). 베스천의 `~/airflow-values.yaml`이 오래되었을 수 있어 저장소의 값 파일을 복사하거나 `--reuse-values --set`을 씁니다. 11/18 11:13에는 아래로 적용했습니다(REVISION 8).
+  ```bash
+  helm upgrade airflow apache-airflow/airflow -n airflow --version 1.22.0 --reuse-values --set images.airflow.repository=asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/airflow --set images.airflow.tag=3.2.2-logging-8bacd79 --set-json 'secret=[{"envName":"LOGGING_DATABASE_URL","secretName":"logging-airflow-database-url","secretKey":"LOGGING_DATABASE_URL"}]' --timeout 10m --wait
+  ```
+- 확인(11/18 11:18): 스케줄러 파드의 이미지가 `3.2.2-logging-8bacd79`이고, 스케줄러 컨테이너에서 `psycopg.connect(os.environ["LOGGING_DATABASE_URL"])`로 접속해 `('logging_airflow', 'behavior_logs')`가 나오는 것을 확인했습니다. `airflow dags list-import-errors`는 `No data found`입니다.
+- `logging_airflow`의 테이블 권한(`airflow-grants.sql`)은 FastAPI가 `behavior_logging` 스키마를 만든 뒤 관리자 계정으로 적용합니다(프런트 레포 `services/logging-server/sql/airflow-grants.sql`).
+
 ## 접속
 공개 주소가 없습니다. 베스천에서 `kubectl -n airflow port-forward`로 접속합니다. 서비스 이름과 포트는 설치 후 `kubectl -n airflow get svc`로 확인합니다(**[확인 필요]**).
 
