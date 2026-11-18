@@ -73,3 +73,14 @@ resource "google_storage_bucket_iam_member" "data_ml_raw_logs_simulator_writer" 
     expression  = "resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.raw_logs.name}/objects/simulator/\")"
   }
 }
+
+# BigQuery 읽기 API(Storage Read API, 대량 읽기)로 읽을 때 읽기 세션을 만드는 권한(프로젝트 수준).
+# 쿼리 실행(jobUser)과 데이터셋 읽기(dataEditor)와 별개이며, 읽을 수 있는 데이터는 위 데이터셋 권한으로만 정해진다.
+resource "google_project_iam_member" "data_ml_bigquery_read_session_user" {
+  for_each = toset(var.data_ml_users)
+  project  = var.project_id
+  role     = "roles/bigquery.readSessionUser"
+  member   = "user:${each.value}"
+
+  depends_on = [google_project_service.apis]
+}
