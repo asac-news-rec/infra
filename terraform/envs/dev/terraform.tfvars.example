@@ -2,3 +2,5 @@
 project_id = "your-gcp-project-id"
 # region      = "asia-northeast3"
 # name_prefix = "news-rec"
+# feast apply를 로컬에서 실행하는 구글 계정(Feast registry 쓰기). 코드에 적지 않는다.
+# feast_registry_users = ["<구글-계정>"]

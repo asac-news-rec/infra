@@ -80,3 +80,18 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 | `kubectl`이 시간 초과 | 내 컴퓨터가 아니라 **배스천 안에서** 실행하는지, `--internal-ip` 옵션을 붙였는지 확인 |
 | 파드가 `ImagePullBackOff` | 이미지가 `dockerhub-mirror`(또는 `news-rec`) 주소인지 확인. Docker Hub가 아닌 레지스트리의 이미지는 받지 못할 수 있음 |
 | 이미 같은 이름의 Cloud SQL이 있다 | 삭제된 인스턴스 이름은 일정 기간 다시 쓸 수 없습니다. `name_prefix`를 바꾸거나 기다립니다 |
+
+## Feast registry와 BigQuery 권한 (이슈 #57)
+`feast-registry.tf`와 `storage.tf`의 수명 규칙이 만듭니다.
+- **registry 위치**: `<프로젝트-ID>-model-artifacts` 버킷의 `feast/registry.pb`입니다.
+- **권한(모두 `feast/` 경로의 객체에 한정, 조건부 권한)**:
+  - 로컬 `feast apply`를 실행하는 사람(변수 `feast_registry_users`): 읽기·쓰기(`roles/storage.objectUser`)
+  - Airflow materialize 작업(서비스 계정 `airflow`): 읽기·쓰기(`roles/storage.objectUser`). 파드가 이 권한을 쓰려면 `airflow-task` 연결(PR #45)이 먼저 필요합니다.
+  - 추론 서버(새 서비스 계정 `inference-server`): 읽기만(`roles/storage.objectViewer`). Workload Identity 연결은 추론 서버를 올릴 때 추가합니다.
+  - 조건이 객체 이름에 걸려 있어서, 경로를 알고 있는 객체의 읽기·쓰기만 됩니다. 목록 조회(`ls`)는 이 조건과 맞지 않아 막힐 수 있습니다(미확인).
+- **수명 규칙**: 이 버킷은 versioning이 켜져 있습니다. 덮어써서 밀려난 옛 버전은 **30일 뒤 자동 삭제**됩니다(registry를 이전 세대로 되돌리는 용도). 프로젝트 종료(12/23)까지의 기간을 덮는 값입니다.
+- **BigQuery**: 서비스 계정 `airflow`에 데이터셋 `dev_yoonmo`의 읽기·쓰기(`roles/bigquery.dataEditor`)와 프로젝트의 쿼리 실행 권한(`roles/bigquery.jobUser`)을 줍니다.
+- **변수 파일에 추가할 것**(`terraform.tfvars`, 커밋하지 않음): `feast_registry_users = ["<구글-계정>"]`
+- **적용**: state에 병합 전 PR의 리소스가 있어서 전체 plan은 사용하지 않고 `-target`으로 이 PR의 리소스만 plan·apply합니다.
+- **롤백**: 이 PR을 되돌린 뒤 같은 `-target`으로 apply하면 권한이 사라집니다. 수명 규칙을 지우면 이후로는 옛 버전이 쌓입니다. 이미 삭제된 옛 버전은 복구되지 않습니다.
+- **비용**: 서비스 계정과 IAM은 무료이고, 옛 버전은 KB 단위 파일이라 저장 비용은 사실상 없습니다.

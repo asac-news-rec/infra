@@ -30,6 +30,16 @@ resource "google_storage_bucket" "model_artifacts" {
     enabled = true
   }
 
+  # 덮어써서 밀려난 옛 버전은 30일 뒤 지운다. 되돌리기용으로 30일만 보관한다(이슈 #57).
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 30
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
   labels = merge(local.labels, { purpose = "model-artifacts" })
 
   lifecycle {
