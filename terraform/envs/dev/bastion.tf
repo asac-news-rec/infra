@@ -29,7 +29,9 @@ resource "google_compute_instance" "bastion" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-12"
+      # debian-12 이미지의 커널 6.1.0-55(2026-11-14 빌드)에서 VM이 반복해서 멈춰(11/17, 이슈 #46) debian-13으로 바꿨다.
+      # 현재 VM의 이미지는 debian-13-trixie-v20261116이다(패밀리는 VM을 만들 때의 최신 빌드를 가져온다). 재발하면 image를 이 이름으로 고정한다.
+      image = "debian-cloud/debian-13"
       size  = 10
     }
   }
