@@ -1,0 +1,16 @@
+# 뉴스 생성기의 중간 결과물을 두는 디스크 (이슈 #59). 베스천에서 `kubectl apply -f pvc.yaml`로 올린다.
+# 마운트 경로 /mnt/news-output은 작업 Pod 쪽 설정이다(요청자: 태원).
+# 크기와 접근 방식은 이슈 #59의 답변을 받은 뒤 확정한다. 아래 10Gi는 임시값이다.
+# Persistent Disk는 한 노드에서만 읽고 쓸 수 있어(ReadWriteOnce), 생성기 Pod가 동시에 여러 개 뜨면 다른 방식이 필요하다.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: news-output
+  namespace: airflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard-rwo
+  resources:
+    requests:
+      storage: 10Gi
