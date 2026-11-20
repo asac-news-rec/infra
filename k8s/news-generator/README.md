@@ -13,6 +13,10 @@ kubectl -n airflow get pvc news-output
 kubectl -n airflow delete pvc news-output
 ```
 
-## 정해지면 확정할 값
-- 크기(`10Gi`는 임시값)와 보관 기간
-- 동시 실행 Pod 수(2개 이상이면 `ReadWriteOnce` 대신 다른 방식 검토)
+## 확정된 값 (태원 님 답변, 11/20)
+- 크기 `2Gi`, 보관 기간 7일(7일 지난 파일 정리는 생성기가 한다)
+- 동시 실행 Pod 없음(Airflow `max_active_runs=1`) → `ReadWriteOnce`로 확정
+- 마운트 경로 `/mnt/news-output`, namespace `airflow`
+
+## 아직 확인 중인 값
+- 같은 파일명으로 이미지를 다시 쓰는지(덮어쓰기에는 `storage.objects.delete`가 필요하다). 지금은 삭제 권한 없이 진행하고, 덮어쓰기 오류가 나면 후속으로 추가한다.
