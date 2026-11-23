@@ -9,6 +9,7 @@
 | `storage.tf` | 원본 로그 버킷 `<project>-raw-logs`, 모델 파일 버킷 `<project>-model-artifacts` |
 | `registry.tf` | 도커 이미지 창고 `news-rec` (태그 없는 이미지는 7일 뒤 삭제) |
 | `iam.tf` | 서비스 계정 `logging-server`, `github-actions`와 최소 권한 |
+| `news-generator.tf` | 뉴스 생성기용 Secret `openrouter-api-key`, `airflow` 계정의 Secret 읽기 2개, 썸네일 버킷 `images/` 한정 create·get (이슈 #59) |
 
 만들지 않는 것: GKE, Cloud SQL, 배스천(다음 PR), 기사 이미지 버킷(태원 님과 협의 후), Cloud Run 배포 권한과 GitHub 인증(후속 PR).
 
