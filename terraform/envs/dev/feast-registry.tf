@@ -93,3 +93,37 @@ output "inference_server_service_account" {
   description = "추론 서버 서비스 계정 이메일."
   value       = google_service_account.inference_server.email
 }
+
+# --- registry 버킷 메타데이터 조회 (PR #64 리뷰 반영) ---------------------------
+# Feast 0.68.0의 GCS registry(feast/infra/registry/gcs.py)는 registry를 읽을 때(get_registry_proto)와
+# 쓸 때(_write_registry) 모두 client.get_bucket(버킷)을 먼저 부른다. 이 호출은 버킷 자체에 대한
+# storage.buckets.get이 필요하고, 위의 feast/ 경로 조건(객체 이름 기준)에는 걸리지 않아 403이 난다.
+# 그래서 storage.buckets.get 하나만 담은 역할을 조건 없이 버킷에 준다. 버킷 정보(이름, 위치, 설정)만 보이고
+# 객체 목록이나 내용은 보이지 않는다(storage.objects.list는 주지 않음).
+resource "google_project_iam_custom_role" "bucket_metadata_reader" {
+  project     = var.project_id
+  role_id     = "${replace(var.name_prefix, "-", "_")}_bucket_metadata_reader"
+  title       = "Bucket metadata reader"
+  description = "버킷 메타데이터 조회(storage.buckets.get)만. Feast registry 클라이언트의 get_bucket 호출용."
+
+  permissions = ["storage.buckets.get"]
+}
+
+resource "google_storage_bucket_iam_member" "feast_bucket_get_users" {
+  for_each = toset(var.feast_registry_users)
+  bucket   = google_storage_bucket.model_artifacts.name
+  role     = google_project_iam_custom_role.bucket_metadata_reader.id
+  member   = "user:${each.value}"
+}
+
+resource "google_storage_bucket_iam_member" "feast_bucket_get_airflow" {
+  bucket = google_storage_bucket.model_artifacts.name
+  role   = google_project_iam_custom_role.bucket_metadata_reader.id
+  member = local.feast_airflow_member
+}
+
+resource "google_storage_bucket_iam_member" "feast_bucket_get_inference" {
+  bucket = google_storage_bucket.model_artifacts.name
+  role   = google_project_iam_custom_role.bucket_metadata_reader.id
+  member = "serviceAccount:${google_service_account.inference_server.email}"
+}
