@@ -89,7 +89,7 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
   - Airflow materialize 작업(서비스 계정 `airflow`): 읽기·쓰기(`roles/storage.objectUser`). 파드가 이 권한을 쓰려면 `airflow-task` 연결(PR #45)이 먼저 필요합니다.
   - 추론 서버(새 서비스 계정 `inference-server`): 읽기만(`roles/storage.objectViewer`). Workload Identity 연결은 추론 서버를 올릴 때 추가합니다.
   - 조건이 객체 이름에 걸려 있어서, 경로를 알고 있는 객체의 읽기·쓰기만 됩니다. 목록 조회(`ls`)는 이 조건과 맞지 않아 막힐 수 있습니다(미확인).
-- **수명 규칙**: 이 버킷은 versioning이 켜져 있습니다. 덮어써서 밀려난 옛 버전은 **30일 뒤 자동 삭제**됩니다(registry를 이전 세대로 되돌리는 용도). 프로젝트 종료(12/23)까지의 기간을 덮는 값입니다.
+- **수명 규칙**: 이 버킷은 versioning이 켜져 있습니다(버킷 단위 설정). **`feast/` 경로에서** 덮어써서 밀려난 옛 버전만 **30일 뒤 자동 삭제**됩니다(registry를 이전 세대로 되돌리는 용도, `matches_prefix`). 프로젝트 종료(12/23)까지의 기간을 덮는 값입니다. MLflow 모델 파일(`mlflow/`) 등 다른 경로의 옛 버전은 지우지 않습니다. 처음(11/20)에는 버킷 전체에 걸었다가 PR #64 리뷰로 11/23에 좁혔습니다(그 사이 30일이 지나지 않아 지워진 것은 없음).
 - **BigQuery**: 서비스 계정 `airflow`에 데이터셋 `dev_yoonmo`의 읽기·쓰기(`roles/bigquery.dataEditor`)와 프로젝트의 쿼리 실행 권한(`roles/bigquery.jobUser`)을 줍니다.
 - **변수 파일에 추가할 것**(`terraform.tfvars`, 커밋하지 않음): `feast_registry_users = ["<구글-계정>"]`
 - **적용**: state에 병합 전 PR의 리소스가 있어서 전체 plan은 사용하지 않고 `-target`으로 이 PR의 리소스만 plan·apply합니다.
