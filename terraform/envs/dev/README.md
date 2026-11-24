@@ -9,6 +9,7 @@
 | `storage.tf` | 원본 로그 버킷 `<project>-raw-logs`, 모델 파일 버킷 `<project>-model-artifacts` |
 | `registry.tf` | 도커 이미지 창고 `news-rec` (태그 없는 이미지는 7일 뒤 삭제) |
 | `iam.tf` | 서비스 계정 `logging-server`, `github-actions`와 최소 권한 |
+| `ml-pipeline-access.tf` | 데이터 파이프라인 DAG용 권한(이슈 #73): `airflow` 계정에 행동 로그 버킷 읽기, BigQuery `raw`·`clean`·`feat` 편집, 임베딩 DB 읽기 계정 비밀번호 Secret `news-db-ml-reader-password`와 읽기 권한 |
 
 만들지 않는 것: GKE, Cloud SQL, 배스천(다음 PR), 기사 이미지 버킷(태원 님과 협의 후), Cloud Run 배포 권한과 GitHub 인증(후속 PR).
 
