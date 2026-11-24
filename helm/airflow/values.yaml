@@ -69,6 +69,13 @@ secret:
   - envName: LOGGING_DATABASE_URL
     secretName: logging-airflow-database-url
     secretKey: LOGGING_DATABASE_URL
+# 로깅 내보내기 DAG(logging_service/interval_export.py)가 os.environ으로 바로 읽는 값. 없으면 KeyError로 실패한다.
+# 비밀 값이 아니라서 env로 넣는다. 모든 Airflow 컨테이너에 들어간다. 11/24 적용(REVISION 9).
+env:
+  - name: GCS_BUCKET
+    value: final-project-513508-raw-logs
+  - name: GOOGLE_CLOUD_PROJECT
+    value: final-project-513508
 
 dags:
   gitSync:

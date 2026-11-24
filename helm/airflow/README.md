@@ -86,6 +86,11 @@
   helm upgrade airflow apache-airflow/airflow -n airflow --version 1.22.0 --reuse-values --set images.airflow.repository=asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/airflow --set images.airflow.tag=3.2.2-logging-8bacd79 --set-json 'secret=[{"envName":"LOGGING_DATABASE_URL","secretName":"logging-airflow-database-url","secretKey":"LOGGING_DATABASE_URL"}]' --timeout 10m --wait
   ```
 - 확인(11/18 11:18): 스케줄러 파드의 이미지가 `3.2.2-logging-8bacd79`이고, 스케줄러 컨테이너에서 `psycopg.connect(os.environ["LOGGING_DATABASE_URL"])`로 접속해 `('logging_airflow', 'behavior_logs')`가 나오는 것을 확인했습니다. `airflow dags list-import-errors`는 `No data found`입니다.
+- 11/24 추가: 내보내기 코드(`logging_service/interval_export.py`)가 `os.environ["GCS_BUCKET"]`, `os.environ["GOOGLE_CLOUD_PROJECT"]`를 그대로 읽는데 REVISION 8까지 두 값이 없었습니다(스케줄러 컨테이너 `env`와 `helm get values`로 확인). 비밀 값이 아니라서 `values.yaml`의 `env`로 넣고 11/24 11:25(KST)에 아래로 적용했습니다(REVISION 9). 적용 전에는 `env` 칸이 비어 있어 덮어쓴 값이 없습니다.
+  ```bash
+  helm upgrade airflow apache-airflow/airflow -n airflow --version 1.22.0 --reuse-values --set-json 'env=[{"name":"GCS_BUCKET","value":"final-project-513508-raw-logs"},{"name":"GOOGLE_CLOUD_PROJECT","value":"final-project-513508"}]' --timeout 10m --wait
+  ```
+  확인: `sts/airflow-scheduler`, `deploy/airflow-dag-processor`에서 `env | grep -E "GCS_BUCKET|GOOGLE_CLOUD_PROJECT"`로 두 줄이 나옵니다. 스케줄러는 Deployment가 아니라 StatefulSet이라 `deploy/airflow-scheduler`로는 찾을 수 없습니다. 이미 `env`에 값이 있는 상태에서 `--set-json 'env=[...]'`를 쓰면 목록 전체가 바뀌므로 기존 값을 함께 넣습니다.
 - `logging_airflow`의 테이블 권한(`airflow-grants.sql`)은 FastAPI가 `behavior_logging` 스키마를 만든 뒤 관리자 계정으로 적용합니다(프런트 레포 `services/logging-server/sql/airflow-grants.sql`).
 
 ## 접속
