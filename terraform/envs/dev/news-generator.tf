@@ -45,8 +45,9 @@ resource "google_secret_manager_secret_iam_member" "airflow_news_db_password" {
 
 # --- 썸네일 버킷 권한 ---------------------------------------------------------
 # 객체 생성과 조회만, images/ 경로에서만 허용한다. 목록 조회와 삭제는 주지 않는다.
-# 주의: 같은 이름의 객체를 다시 쓰려면 삭제 권한이 필요하다(덮어쓰기는 create+delete).
-#       생성기가 같은 파일명을 다시 쓰는지는 이슈 #59에서 확인 중이다.
+# 같은 이름의 객체를 다시 쓰려면 삭제 권한이 필요하다(덮어쓰기는 create+delete).
+# 생성기(backend generate/generate.py의 upload_thumbnail)는 if_generation_match=0으로 새 이름일 때만 올리고,
+# 이미 있으면 412를 받아 MD5만 비교한다(덮어쓰기 없음, 11/23 코드 확인). 그래서 delete는 주지 않는다.
 resource "google_project_iam_custom_role" "airflow_thumbnails" {
   project     = var.project_id
   role_id     = "${replace(var.name_prefix, "-", "_")}_airflow_thumbnails"
