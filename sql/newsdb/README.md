@@ -8,7 +8,7 @@ Cloud SQL `news-rec-pg`의 데이터베이스 `newsdb`(백엔드 뉴스 DB)에 �
 | --- | --- | --- | --- |
 | V1 | `news_impressions` 테이블, 인덱스 2개, `news_app`에 INSERT | #66 | 2026-11-23 11:21 KST, 장주현 (postgres 계정, psql -1) |
 | V2 | 조회 전용 계정 `news_readonly`(newsdb 전체 SELECT, 이후 테이블 포함). 비밀번호는 Secret `news-db-readonly-password` | #66 | 2026-11-24 15:05 KST, 장주현 (postgres 계정, psql -1) |
-| V3 | `news_app`에 `news_articles` INSERT·UPDATE(생성기 upsert용). 피드 앱도 같은 계정이라 수정 가능해짐, 생성기 계정 분리는 후속 | #66 | 2026-11-24 HH:MM KST, 장주현 (postgres 계정, psql -1) |
+| V3 | `news_app`에 `news_articles` INSERT·UPDATE(생성기 upsert용). 피드 앱도 같은 계정이라 수정 가능해짐, 생성기 계정 분리는 후속 | #66 | 2026-11-24 15:11 KST, 장주현 (postgres 계정, psql -1) |
 
 ## 적용 방법 (WSL)
 
