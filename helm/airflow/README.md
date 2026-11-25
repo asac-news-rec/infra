@@ -91,6 +91,11 @@
   helm upgrade airflow apache-airflow/airflow -n airflow --version 1.22.0 --reuse-values --set-json 'env=[{"name":"GCS_BUCKET","value":"final-project-513508-raw-logs"},{"name":"GOOGLE_CLOUD_PROJECT","value":"final-project-513508"}]' --timeout 10m --wait
   ```
   확인: `sts/airflow-scheduler`, `deploy/airflow-dag-processor`에서 `env | grep -E "GCS_BUCKET|GOOGLE_CLOUD_PROJECT"`로 두 줄이 나옵니다. 스케줄러는 Deployment가 아니라 StatefulSet이라 `deploy/airflow-scheduler`로는 찾을 수 없습니다. 이미 `env`에 값이 있는 상태에서 `--set-json 'env=[...]'`를 쓰면 목록 전체가 바뀌므로 기존 값을 함께 넣습니다.
+- 11/25 추가: 내보내기 DAG(`export_behavior_logs.py`)는 `BEHAVIOR_EXPORT_CRON`이 없으면 자동 실행하지 않고, `catchup=True`라 `BEHAVIOR_EXPORT_START`부터 밀린 구간을 채웁니다. 세호 님 요청대로 첫 내보내기는 prune 없이 스케줄러 Pod에서 `export_interval(2026-11-24T01:00Z, 2026-11-25T01:45Z)`만 직접 실행하고(job 4개, served 120·actions 13), DB·GCS 건수와 ID 대조 뒤 11/25 15:1x(KST)에 아래로 적용했습니다(REVISION 10). 백업은 베스천 `~/airflow-values-rev9.yaml`.
+  ```bash
+  helm upgrade airflow apache-airflow/airflow -n airflow --version 1.22.0 --reuse-values --set-json 'env=[{"name":"GCS_BUCKET","value":"final-project-513508-raw-logs"},{"name":"GOOGLE_CLOUD_PROJECT","value":"final-project-513508"},{"name":"BEHAVIOR_EXPORT_CRON","value":"*/5 * * * *"},{"name":"BEHAVIOR_EXPORT_START","value":"2026-11-25T01:45:00Z"}]' --timeout 10m
+  ```
+  확인: 스케줄러·dag-processor에서 `printenv`로 네 값, `airflow dags unpause export_behavior_logs` 뒤 01:45Z부터 5분 구간이 차례로 success(16:16에 07:10Z까지 따라잡음). 각 실행의 prune은 내보냈고 받은 지 24시간 지난 기록만 지웁니다. 되돌리기는 `helm rollback airflow 9 -n airflow` 후 DAG pause.
 - `logging_airflow`의 테이블 권한(`airflow-grants.sql`)은 FastAPI가 `behavior_logging` 스키마를 만든 뒤 관리자 계정으로 적용합니다(프런트 레포 `services/logging-server/sql/airflow-grants.sql`).
 
 ## 접속
