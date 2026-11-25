@@ -36,8 +36,8 @@ resource "google_container_cluster" "main" {
     services_secondary_range_name = local.gke_services_range_name
   }
 
-  # 노드와 관리 주소 모두 공개 IP가 없다. 노드는 인터넷에 직접 나가지 못하므로
-  # 이미지는 Artifact Registry(registry.tf의 Docker Hub 복사본)에서 받는다.
+  # 노드와 관리 주소 모두 공개 IP가 없다. 노드와 파드가 밖으로 나갈 때는 Cloud NAT(nat.tf)를 거친다.
+  # 이미지는 Artifact Registry 복사본(registry.tf)에서 받는 것을 기본으로 한다(README-platform.md 설계 결정).
   private_cluster_config {
     enable_private_nodes    = true
     enable_private_endpoint = true

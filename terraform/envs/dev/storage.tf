@@ -30,6 +30,18 @@ resource "google_storage_bucket" "model_artifacts" {
     enabled = true
   }
 
+  # feast/ 경로(Feast registry)에서 덮어써서 밀려난 옛 버전만 30일 뒤 지운다(이슈 #57).
+  # versioning은 버킷 단위지만 수명 규칙은 경로로 제한할 수 있다. MLflow 모델 파일(mlflow/)의 옛 버전은 지우지 않는다(PR #64 리뷰).
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 30
+      matches_prefix             = ["feast/"]
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
   labels = merge(local.labels, { purpose = "model-artifacts" })
 
   lifecycle {
