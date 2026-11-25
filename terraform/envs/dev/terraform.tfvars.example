@@ -2,5 +2,9 @@
 project_id = "your-gcp-project-id"
 # region      = "asia-northeast3"
 # name_prefix = "news-rec"
+# data-ml 개발자 구글 계정. 모든 팀원이 같은 값을 넣어야 한다.
+# 비워 두고 apply하면 BigQuery 데이터셋 권한과 raw-logs 권한이 제거된다.
+# data_ml_users = ["someone@example.com"]
+
 # feast apply를 로컬에서 실행하는 구글 계정(Feast registry 쓰기). 코드에 적지 않는다.
 # feast_registry_users = ["<구글-계정>"]
