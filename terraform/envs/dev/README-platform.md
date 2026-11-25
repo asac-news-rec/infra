@@ -57,6 +57,12 @@ kubectl get namespaces
 - `--internal-ip`는 비공개 관리 주소(내부 주소)로 접속하라는 뜻입니다.
 - 노드가 0개이면 `kubectl get nodes`는 비어 있는 것이 정상입니다. 접속이 되는지는 `kubectl get namespaces`로 확인합니다.
 
+## Airflow 서비스 계정 (이슈 #37)
+`airflow-sa.tf`가 만듭니다. Airflow 작업이 키 파일 없이 GCS에 접근하는 신분입니다.
+- GCP 서비스 계정 `airflow`를 Workload Identity로 쿠버네티스 서비스 계정 `airflow-scheduler`, `airflow-triggerer`, `airflow-task`(`airflow` 네임스페이스. `airflow-task`는 KubernetesPodOperator 작업 파드 전용이고 차트가 만들지 않아 `kubectl`로 따로 만듭니다)와 연결합니다. 파드가 이 계정을 쓰려면 Helm 값에서 각 서비스 계정에 `iam.gke.io/gcp-service-account: airflow@<프로젝트-ID>.iam.gserviceaccount.com` 주석을 붙여야 합니다(이 PR에는 포함되지 않음).
+- 권한은 `<프로젝트-ID>-raw-logs` 버킷의 `served/`, `actions/`, `manifests/` 경로에 한해 `storage.objects.create`, `get`, `delete`만 줍니다(목록 조회 없음). 덮어쓰기에는 create와 delete가 함께 필요한데 둘 다 있으므로 허용된 경로에서는 덮어쓸 수 있습니다. 원본 덮어쓰기를 막으려면 DAG 업로드에 `if_generation_match=0` 조건을 거세요(이미 있으면 412 오류). 사용자 지정 역할과 조건부 권한으로 구현했습니다.
+- 태스크 환경 값: `GOOGLE_CLOUD_PROJECT=<프로젝트-ID>`, `GCS_BUCKET=<프로젝트-ID>-raw-logs`, `GCS_PREFIX`는 쓰지 않습니다.
+
 ## DB 사용자 만들기 (비밀번호는 코드에 쓰지 않음)
 ```bash
 gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
