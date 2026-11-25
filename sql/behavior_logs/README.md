@@ -6,6 +6,8 @@ Cloud SQL `news-rec-pg`의 데이터베이스 `behavior_logs`(로깅 DB)에 사�
 | 버전 | 내용 | 이슈 | 적용 |
 | --- | --- | --- | --- |
 | V1 | `logging_airflow`에 내보내기용 권한(원본: frontend `8bacd79` `airflow-grants.sql`) | #58 | 2026-11-23 14:41 KST, 장주현 (logging_api 계정, psql -1) |
+| V2 | 대조용 조회 계정 `logging_readonly` 생성, `behavior_logs` 접속. 비밀번호는 Secret `logging-db-readonly-password`(세호 님 계정에 읽기 권한) | 세호 님 요청(11/25) | 2026-11-25 14:15 KST, 장주현 (postgres 계정, psql -1) |
+| V3 | `logging_readonly`에 `behavior_logging` 사용과 표 4개(served_records, action_records, export_jobs, export_members) SELECT | 세호 님 요청(11/25) | 2026-11-25 14:15 KST, 장주현 (logging_api 계정, psql -1) |
 
 ## 적용 방법 (WSL)
 
@@ -17,3 +19,11 @@ Cloud SQL `news-rec-pg`의 데이터베이스 `behavior_logs`(로깅 DB)에 사�
 ## 되돌리기
 
 `REVOKE ALL ON ALL TABLES IN SCHEMA behavior_logging FROM logging_airflow; REVOKE USAGE ON SCHEMA behavior_logging FROM logging_airflow;` (`logging_api`로 실행)
+
+V2·V3 적용(WSL, 터미널 A의 proxy를 켠 채로):
+1. `PGPASSWORD="$(gcloud secrets versions access latest --secret=news-db-admin-password)" psql "host=127.0.0.1 port=5433 dbname=behavior_logs user=postgres" -v ON_ERROR_STOP=1 -v ro_pw="$(gcloud secrets versions access latest --secret=logging-db-readonly-password)" -1 -f sql/behavior_logs/V2__logging_readonly_role.sql`
+2. `PGPASSWORD="$(gcloud secrets versions access latest --secret=logging-api-db-password)" psql "host=127.0.0.1 port=5433 dbname=behavior_logs user=logging_api" -v ON_ERROR_STOP=1 -1 -f sql/behavior_logs/V3__logging_readonly_grants.sql`
+3. 확인: `logging_readonly`로 접속해 표 4개 count와 `has_table_privilege('behavior_logging.served_records','DELETE')` = f. 11/25 결과 served 260, actions 121, jobs 4, members 133, f.
+- raw-logs 버킷 읽기는 세호 님 계정에 `gcloud storage buckets add-iam-policy-binding … --role=roles/storage.objectViewer --condition=None`으로 줬습니다(버킷에 조건부 권한이 있어 `--condition=None` 필요). Terraform 밖 변경입니다.
+
+V2·V3 되돌리기: `logging_api`로 `REVOKE SELECT ON ALL TABLES IN SCHEMA behavior_logging FROM logging_readonly; REVOKE USAGE ON SCHEMA behavior_logging FROM logging_readonly;` → `postgres`로 `REVOKE CONNECT ON DATABASE behavior_logs FROM logging_readonly; DROP ROLE logging_readonly;` → Secret `logging-db-readonly-password` 삭제, 버킷 권한 `remove-iam-policy-binding`.
