@@ -60,3 +60,15 @@ resource "google_secret_manager_secret_iam_member" "airflow_news_db_ml_reader" {
   role      = "roles/secretmanager.secretAccessor"
   member    = local.ml_pipeline_sa_member
 }
+
+# --- BigQuery 결과 빠른 읽기(Storage Read API) -------------------------------
+# feast_materialize가 원천 표 조회 결과를 Arrow로 받을 때 BigQuery Storage Read API를 쓴다
+# (google-cloud-bigquery의 to_arrow → create_read_session). 이 호출은 프로젝트 수준의
+# bigquery.readsessions.create 권한이 필요하고, dataEditor·jobUser에는 들어 있지 않다.
+# 11/25 첫 전체 적재가 이 권한이 없어 403(PermissionDenied)으로 실패했다.
+# 역할에는 읽기 세션 생성만 들어 있고, 어느 표를 읽을지는 데이터셋 권한(dataEditor)이 정한다.
+resource "google_project_iam_member" "airflow_bq_read_session" {
+  project = var.project_id
+  role    = "roles/bigquery.readSessionUser"
+  member  = local.ml_pipeline_sa_member
+}
