@@ -47,7 +47,7 @@ variable "db_version" {
 }
 
 variable "db_tier" {
-  description = "Cloud SQL 사양. 가장 작은 공유 코어."
+  description = "Cloud SQL 사양. 서비스 DB, 로깅, Airflow, MLflow가 함께 쓰는 공유 코어."
   type        = string
-  default     = "db-f1-micro"
+  default     = "db-g1-small"
 }

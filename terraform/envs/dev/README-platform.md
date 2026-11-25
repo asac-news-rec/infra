@@ -14,7 +14,10 @@
 | `gke.tf` | GKE Standard 클러스터 1개(비공개, 한 구역) | Valkey, MLflow, 추론 서버(필요하면 Airflow)가 올라갈 곳. 관리 주소에 공개 IP가 없고 배스천에서만 접속 |
 | `gke-nodepools.tf` | 노드 풀 2개(`fixed`, `worker`), 노드용 서비스 계정과 권한 | `fixed`는 항상 떠 있어야 하는 것, `worker`는 작업용(Spot, 일이 없으면 0개) |
 | `registry.tf` | (추가) `dockerhub-mirror` 저장소 | 비공개 노드가 인터넷 없이 Docker Hub 이미지를 받는 복사본 |
-| `cloudsql.tf` | Cloud SQL 인스턴스 + DB `newsdb` | 뉴스 DB. 가장 작은 사양, 삭제 방지, 매일 백업 |
+| `cloudsql.tf` | Cloud SQL 인스턴스 + DB `newsdb` | 뉴스 DB. g1-small(공유 코어), 삭제 방지, 매일 백업 |
+| `cloudsql-databases.tf` | DB `behavior_logs`, `airflow`, `mlflow` | 같은 인스턴스 안에서 서비스별 DB 분리(멘토 11/5). 계정은 Terraform 밖에서 생성 |
+| `cloudsql-proxy.tf` | 서비스 계정 `cloudsql-proxy`, `roles/cloudsql.client`, Workload Identity 연결 | Auth Proxy용. 파드 매니페스트는 `k8s/cloud-sql-proxy/` |
+| `logging-server-db.tf` | `logging-server`의 `roles/cloudsql.client`, 접속 Secret(`logging-api-database-url`) 읽기 권한 | 로깅 서버(Cloud Run)가 Cloud SQL 소켓으로 접속. Secret 값은 Terraform 밖에서 생성 |
 
 ## 설계 결정
 - **GKE는 비공개 Standard 클러스터**입니다(멘토 11/5, 이슈 #21). 노드와 관리 주소 모두 공개 IP가 없고, 관리 주소에는 VPC 서브넷(배스천이 있는 곳) 안에서만 접속됩니다. 내 컴퓨터에서 직접 `kubectl`은 되지 않으며 **배스천을 거쳐야** 합니다.
@@ -65,13 +68,16 @@ kubectl get namespaces
 
 ## DB 사용자 만들기 (비밀번호는 코드에 쓰지 않음)
 ```bash
-gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
+PW="$(openssl rand -base64 24 | tr -d '/+=\n')"; printf '%s' "$PW" | gcloud secrets create logging-api-db-password --data-file=- && gcloud sql users create logging_api --instance=news-rec-pg --password="$PW"; unset PW
 ```
-`--prompt-for-password` 옵션 지원 여부는 gcloud 버전에 따라 다릅니다(**[확인 필요]**). 비밀번호는 Secret Manager에 따로 보관합니다. 채팅과 레포에는 올리지 않습니다.
+gcloud 592.0.0에는 `--prompt-for-password` 옵션이 없고 `--password`만 있습니다. 위 명령은 비밀번호를 화면에 출력하지 않고 Secret Manager에 먼저 저장한 뒤 같은 값으로 계정을 만듭니다. 비밀번호는 채팅과 레포에 올리지 않습니다.
+- 계정: `logging_api`, `logging_airflow`(시크릿 `logging-api-db-password`, `logging-airflow-db-password`). 권한(GRANT)은 서비스 담당자가 검증한 SQL로 부여합니다.
+- 접속: 클러스터 안에서 `cloud-sql-proxy.airflow.svc:5432`(Auth Proxy, `k8s/cloud-sql-proxy/`).
+- `max_connections`는 g1-small에서 50입니다(2026-11-17 실측). 서비스별 연결 풀 크기를 합쳐 이 값을 넘지 않게 합니다.
 
 ## 비용과 끄는 법 (공식 가격 계산기로 확인 필요)
 - **노드(VM)는 켜져 있는 시간만큼 과금**됩니다. 노드가 0개이면 노드 요금이 없습니다. 한 구역(zonal) 클러스터의 관리비는 월 무료 혜택 대상으로 알려져 있습니다(**[확인 필요]**).
-- Cloud SQL(db-f1-micro)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
+- Cloud SQL(db-g1-small)과 배스천(e2-micro)은 켜져 있는 동안 계속 과금됩니다. 배스천의 외부 IP는 **임시 IP**라서 VM을 중지하면 IP 요금도 나오지 않습니다(고정 IP는 중지해도 요금이 나오기 때문에 쓰지 않습니다).
 - **Cloud NAT** 요금은 세 가지입니다(공식 가격 문서 https://cloud.google.com/nat/pricing , 11/23 확인).
   - 게이트웨이: **NAT를 쓰는 VM 수**에 비례해 VM 1대당 시간당 $0.0014(32대에서 상한 $0.044). 외부 IP가 있는 배스천은 NAT를 쓰지 않으므로 세지 않습니다.
   - 데이터 처리: NAT를 지나는 데이터 1GiB당 $0.045(들어오고 나가는 양 모두). 인터넷 송신 요금은 따로 붙습니다.
