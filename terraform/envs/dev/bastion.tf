@@ -1,6 +1,8 @@
 # 배스천 서버: 팀원이 GKE 안으로 들어가는 통로. 작은 VM 1대.
 # GKE 관리 주소는 비공개라서 VPC 안(이 VM이 있는 서브넷)에서만 접속된다.
-# 임시 외부 IP는 NAT 없이 시작 스크립트가 apt로 kubectl을 설치하기 위한 것이다. 허용 목록에 등록하지 않으므로 고정할 필요가 없고,
+# 임시 외부 IP는 시작 스크립트가 apt로 kubectl을 설치하기 위한 것이다(Cloud NAT보다 먼저 만들었다).
+# 외부 IP가 있는 VM은 Cloud NAT를 쓰지 않고 이 IP로 바로 나간다. NAT가 생겼으므로 외부 IP 제거는 후속 이슈에서 검토한다.
+# 허용 목록에 등록하지 않으므로 고정할 필요가 없고,
 # VM을 중지하면 IP도 함께 반환되어 IP 요금이 나오지 않는다(켤 때마다 주소가 바뀐다).
 # SSH는 IAP로만 들어오고(방화벽 참고), 로그인은 구글 계정(OS Login)으로 한다. 키 파일은 쓰지 않는다.
 
@@ -29,7 +31,9 @@ resource "google_compute_instance" "bastion" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-12"
+      # debian-12 이미지의 커널 6.1.0-55(2026-11-14 빌드)에서 VM이 반복해서 멈춰(11/17, 이슈 #46) debian-13으로 바꿨다.
+      # 현재 VM의 이미지는 debian-13-trixie-v20261116이다(패밀리는 VM을 만들 때의 최신 빌드를 가져온다). 재발하면 image를 이 이름으로 고정한다.
+      image = "debian-cloud/debian-13"
       size  = 10
     }
   }

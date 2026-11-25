@@ -22,3 +22,8 @@ output "github_actions_service_account" {
   description = "GitHub Actions 서비스 계정 이메일."
   value       = google_service_account.github_actions.email
 }
+
+output "airflow_service_account" {
+  description = "Airflow 작업용 GCP 서비스 계정 이메일. Helm 값의 iam.gke.io/gcp-service-account 주석에 넣는다."
+  value       = google_service_account.airflow.email
+}
