@@ -1,0 +1,93 @@
+# 추론 서버(data-ml-pipeline serving/, PR #24) dev 배포 (이슈 #76).
+# 적용: 배스천에서 kubectl apply -f k8s/inference-server/inference-server.yaml
+# GCP 쪽 권한·내부 고정 IP는 terraform/envs/dev/inference-server.tf.
+# 이미지 태그는 data-ml-pipeline 커밋 SHA 7자리, 내부 IP는 terraform output inference_ilb_ip 값이다.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inference
+---
+# Workload Identity: 이 쿠버네티스 계정이 GCP 계정 inference-server로 행동한다.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inference-server
+  namespace: inference
+  annotations:
+    iam.gke.io/gcp-service-account: inference-server@final-project-513508.iam.gserviceaccount.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-server
+  namespace: inference
+  labels:
+    app: inference-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inference-server
+  template:
+    metadata:
+      labels:
+        app: inference-server
+    spec:
+      serviceAccountName: inference-server
+      containers:
+        - name: inference-server
+          image: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/inference-server:1e86d97
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FEAST_FS_YAML
+              value: feature_store.gcp.yaml
+            - name: FEAST_REGISTRY_PATH
+              value: gs://final-project-513508-model-artifacts/feast/registry.pb
+            - name: GCP_PROJECT_ID
+              value: final-project-513508
+            - name: FEAST_BQ_TEMP_DATASET
+              value: dev_yoonmo
+            - name: VALKEY_HOST
+              value: valkey.valkey.svc.cluster.local
+            - name: MODEL_PATH
+              value: gs://final-project-513508-model-artifacts/models/pctr/lgbm.txt
+          # 첫 배포 실측 전 추정치. 노드(e2-standard-2) CPU가 매시 정각에 빠듯해 요청은 작게 둔다.
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          # 모델·Feast 정의를 읽어야 준비 완료. 시작에 수십 초 걸릴 수 있다.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+# 내부 부하 분산기(L4). VPC 안(뉴스 WAS Cloud Run의 VPC 연결 포함)에서만 보이고 외부 공개는 없다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-server
+  namespace: inference
+  annotations:
+    networking.gke.io/load-balancer-type: "Internal"
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.10.0.220
+  selector:
+    app: inference-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
