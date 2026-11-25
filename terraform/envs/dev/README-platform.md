@@ -1,6 +1,6 @@
 # 플랫폼: 네트워크, GKE, 배스천, Cloud SQL
 
-`apis-platform.tf`, `network.tf`, `gke.tf`, `gke-nodepools.tf`, `bastion.tf`, `cloudsql.tf`와 `*-platform.tf`가 만드는 것입니다. 기본 리소스(버킷, 이미지 창고 등)는 `README.md`(PR #8)를 보세요.
+`apis-platform.tf`, `network.tf`, `gke.tf`, `gke-nodepools.tf`, `bastion.tf`, `bastion-rbac.tf`, `cloudsql.tf`와 `*-platform.tf`가 만드는 것입니다. 기본 리소스(버킷, 이미지 창고 등)는 `README.md`(PR #8)를 보세요.
 
 ## 만들어지는 것 (`plan`에서 확인)
 이 문서의 처음 구성(PR #12)은 `15 + 3 × (bastion_users에 적은 사람 수)`개였습니다. 비공개 Standard 재구성(이슈 #21)으로 노드 풀, 노드 서비스 계정과 권한, Docker Hub 복사본 저장소가 추가되었고 GKE 클러스터는 새로 생성됩니다(옛 Autopilot 클러스터는 11/6에 삭제해 상태 파일에도 없으므로 `plan`에서 교체가 아니라 추가로 나타납니다). 정확한 개수는 `plan`에서 확인합니다.
@@ -11,6 +11,7 @@
 | `network.tf` | VPC, 서브넷, 방화벽 1개 | 우리 전용 네트워크. SSH는 IAP 대역에서만 허용 |
 | `nat.tf` | Cloud Router, Cloud NAT | 비공개 노드·파드가 인터넷으로 나가는 연결만 허용(들어오는 연결은 열리지 않음) |
 | `bastion.tf` | 서비스 계정, VM(임시 외부 IP), 권한들 | 팀원이 GKE에 들어가는 통로(작은 VM 1대) |
+| `bastion-rbac.tf` | 사용자 지정 역할 1개, 베스천 서비스 계정에 연결 | 베스천이 Helm 차트가 만드는 쿠버네티스 권한 규칙(Role, RoleBinding)을 만들 수 있게 함 (이슈 #43) |
 | `gke.tf` | GKE Standard 클러스터 1개(비공개, 한 구역) | Valkey, MLflow, 추론 서버(필요하면 Airflow)가 올라갈 곳. 관리 주소에 공개 IP가 없고 배스천에서만 접속 |
 | `gke-nodepools.tf` | 노드 풀 2개(`fixed`, `worker`), 노드용 서비스 계정과 권한 | `fixed`는 항상 떠 있어야 하는 것, `worker`는 작업용(Spot, 일이 없으면 0개) |
 | `registry.tf` | (추가) `dockerhub-mirror` 저장소 | 비공개 노드가 인터넷 없이 Docker Hub 이미지를 받는 복사본 |
@@ -23,6 +24,7 @@
 - **Cloud NAT는 나가는 연결만 허용**합니다(이슈 #36). 11/16 시험에서 NAT 없이는 GitHub, OpenRouter, registry.k8s.io에 8초 안에 닿지 않는 것을 확인했습니다. 밖에서 안으로 들어오는 연결은 열리지 않으며 접속은 계속 배스천뿐입니다. Airflow git sync와 OpenRouter 호출에 필요합니다.
 - **파드는 Workload Identity로 GCP에 접속**합니다(키 파일 없음). 파드별 서비스 계정 연결은 서비스를 올릴 때 추가합니다.
 - **배스천**은 임시 외부 IP를 가지지만 SSH 방화벽은 IAP 대역(35.235.240.0/20)에서만 열립니다. 로그인은 구글 계정(OS Login)이고 키 파일은 없습니다. 외부 IP는 `apt` 등 인터넷을 쓰기 위한 것이며(파드와 노드의 외부 접속은 Cloud NAT) GKE 접속 허용과는 무관합니다.
+- **베스천의 RBAC 권한**(이슈 #43): Helm 차트(예: Airflow)가 쿠버네티스 안에 Role/RoleBinding을 만들려면 설치 계정에 `container.roles.*`, `container.roleBindings.*`와 함께 `container.roles.escalate`, `container.roles.bind`가 필요합니다. 쿠버네티스는 자신이 가진 RBAC 권한만 새 Role에 담게 하는데, GCP IAM(`container.developer`)으로 받은 권한은 이 검사에 포함되지 않기 때문입니다(11/17 `helm upgrade`에서 `attempting to grant RBAC permissions not currently held`로 확인). 클러스터 전체 권한(`container.clusterRoles.*`)은 주지 않아 `container.admin`보다 좁지만, **프로젝트 IAM은 네임스페이스를 구분하지 못해서** escalate·bind가 `kube-system`을 포함한 **모든 네임스페이스**에 적용됩니다. 그래서 이론상 베스천 계정이 강한 Role을 만들어 자기에게 연결하면 클러스터 전체 권한으로 넓어질 수 있습니다. 방어선은 IAP 접속 통제와 접속자 수(현재 1명)입니다. 설치가 끝난 뒤 필요 없으면 두 권한은 빼고, 대안으로 IAM 대신 쿠버네티스 RoleBinding으로 `airflow` 네임스페이스에만 권한을 주는 방식을 후속 이슈로 검토합니다.
 - **Cloud SQL**은 허용 네트워크를 하나도 열지 않아 직접 접속이 안 되고, Auth Proxy(구글 계정 인증, 암호화)로만 접속합니다. 비공개 IP로 바꾸는 것은 후속 결정입니다.
 - **DB 비밀번호는 Terraform으로 만들지 않습니다.** 상태 파일에 평문으로 남기 때문입니다(아래 "DB 사용자 만들기").
 
@@ -94,6 +96,8 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 | `kubectl`이 시간 초과 | 내 컴퓨터가 아니라 **배스천 안에서** 실행하는지, `--internal-ip` 옵션을 붙였는지 확인 |
 | 파드가 `ImagePullBackOff` | 이미지가 `dockerhub-mirror`(또는 `news-rec`) 주소인지 확인. Docker Hub가 아닌 레지스트리의 이미지는 받지 못할 수 있음 |
 | 이미 같은 이름의 Cloud SQL이 있다 | 삭제된 인스턴스 이름은 일정 기간 다시 쓸 수 없습니다. `name_prefix`를 바꾸거나 기다립니다 |
+| `helm`에서 `attempting to grant RBAC permissions not currently held` | 설치 계정(베스천)이 새 Role에 담긴 권한을 RBAC로 갖지 않았다는 뜻입니다. `bastion-rbac.tf`의 `container.roles.escalate`·`bind`를 확인하세요(IAM 반영에 1~2분) |
+| `helm upgrade`에서 `updates to statefulset spec ... forbidden` | 디스크 크기 같은 바꿀 수 없는 값이 실행 중인 것과 다릅니다. 값 파일 대신 `--reuse-values --set <키>=<값>`으로 실제 설치된 값을 재사용합니다 |
 
 ## Feast registry와 BigQuery 권한 (이슈 #57)
 `feast-registry.tf`와 `storage.tf`의 수명 규칙이 만듭니다.
