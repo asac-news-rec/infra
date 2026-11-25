@@ -37,3 +37,8 @@ output "logging_deploy_service_account" {
   description = "로깅 서버 배포 계정 이메일. frontend 저장소 GCP_DEPLOY_SERVICE_ACCOUNT 변수 값."
   value       = google_service_account.logging_deploy.email
 }
+
+output "airflow_service_account" {
+  description = "Airflow 작업용 GCP 서비스 계정 이메일. Helm 값의 iam.gke.io/gcp-service-account 주석에 넣는다."
+  value       = google_service_account.airflow.email
+}
