@@ -23,6 +23,21 @@ output "github_actions_service_account" {
   value       = google_service_account.github_actions.email
 }
 
+output "logging_server_url" {
+  description = "로깅 서버 Cloud Run 주소. 호출 쪽 ID 토큰의 audience로도 쓴다(이슈 #58)."
+  value       = google_cloud_run_v2_service.logging_server.uri
+}
+
+output "logging_server_image" {
+  description = "로깅 서버 이미지 경로(태그 제외). frontend 저장소 LOGGING_IMAGE 변수 값."
+  value       = local.logging_server_image
+}
+
+output "logging_deploy_service_account" {
+  description = "로깅 서버 배포 계정 이메일. frontend 저장소 GCP_DEPLOY_SERVICE_ACCOUNT 변수 값."
+  value       = google_service_account.logging_deploy.email
+}
+
 output "airflow_service_account" {
   description = "Airflow 작업용 GCP 서비스 계정 이메일. Helm 값의 iam.gke.io/gcp-service-account 주석에 넣는다."
   value       = google_service_account.airflow.email

@@ -95,6 +95,28 @@ gcloud sql users create newsapp --instance=news-rec-pg --prompt-for-password
 | 파드가 `ImagePullBackOff` | 이미지가 `dockerhub-mirror`(또는 `news-rec`) 주소인지 확인. Docker Hub가 아닌 레지스트리의 이미지는 받지 못할 수 있음 |
 | 이미 같은 이름의 Cloud SQL이 있다 | 삭제된 인스턴스 이름은 일정 기간 다시 쓸 수 없습니다. `name_prefix`를 바꾸거나 기다립니다 |
 
+## 로깅 서버 Cloud Run (이슈 #58)
+
+`logging-server-run.tf`가 만드는 것: 공유 토큰 Secret `logging-api-token`(값 제외)과 읽기 권한 2개(`logging-server`, `news-feed-run`), 배포 계정 `logging-deploy`와 권한 4개(WIF, 이미지 쓰기, `logging-server` 계정 사용, 서비스 갱신), Cloud Run `logging-server`, 호출 권한(`news-feed-run`만).
+
+- **호출 인증**: 인그레스는 모든 경로 허용이지만 IAM 인증이 필요합니다. 호출 쪽은 Cloud Run ID 토큰(`X-Serverless-Authorization` 헤더)과 앱 공유 토큰(`Authorization: Bearer`)을 둘 다 보냅니다. ID 토큰의 audience는 출력 `logging_server_url`입니다.
+- **이미지**: 최초 이미지(`8bacd79` 태그)만 사람이 올리고, 이후는 frontend workflow(`logging-fastapi.yml`)가 커밋 SHA 태그로 갱신합니다. Terraform은 이미지 변경을 무시합니다(`ignore_changes`).
+- **frontend 저장소 변수**(logging-production 환경): `GCP_WORKLOAD_IDENTITY_PROVIDER`=`projects/<프로젝트 번호>/locations/global/workloadIdentityPools/github/providers/github`, `GCP_DEPLOY_SERVICE_ACCOUNT`=출력 `logging_deploy_service_account`, `LOGGING_IMAGE`=출력 `logging_server_image`, `GCP_PROJECT`, `RUN_REGION`.
+
+### 적용 순서 (WSL, `terraform/envs/dev`)
+
+Cloud Run 리비전은 Secret 값과 이미지가 있어야 뜨므로 두 번에 나눠 적용합니다. 이 state에는 머지 전 PR의 리소스가 있어 전체 plan을 쓰지 않고 `-target`만 씁니다.
+
+1. 1차(7개 추가): `terraform plan -out tfplan-58a -target=google_secret_manager_secret.logging_api_token -target=google_secret_manager_secret_iam_member.logging_token_server -target=google_secret_manager_secret_iam_member.logging_token_caller -target=google_service_account.logging_deploy -target=google_service_account_iam_member.logging_deploy_wif -target=google_artifact_registry_repository_iam_member.logging_deploy_writer -target=google_service_account_iam_member.logging_deploy_act_as` → `terraform apply tfplan-58a`
+2. Secret 값(48자 무작위, 화면에 남기지 않음): `openssl rand -base64 36 | tr -d '\n' | gcloud secrets versions add logging-api-token --data-file=-`
+3. 최초 이미지: frontend 커밋 `8bacd79`의 `services/logging-server`를 꺼내 빌드하고 `<logging_server_image>:8bacd79`로 push합니다(`gcloud auth configure-docker asia-northeast3-docker.pkg.dev` 먼저).
+4. 2차(3개 추가): `terraform plan -out tfplan-58b -target=google_cloud_run_v2_service.logging_server -target=google_cloud_run_v2_service_iam_member.logging_deploy_run -target=google_cloud_run_v2_service_iam_member.logging_invoker_news_feed` → `terraform apply tfplan-58b`
+5. 확인: `curl -H "X-Serverless-Authorization: Bearer $(gcloud auth print-identity-token)" "$(terraform output -raw logging_server_url)/health"`
+
+### 되돌리기
+
+위 두 묶음의 `-target`으로 `terraform destroy`(2차 먼저). Secret을 지우면 값도 사라지므로 다시 만들 때는 2번부터 반복합니다. 데이터는 Cloud SQL `behavior_logs`에 있어 서비스를 지워도 남습니다.
+
 ## Feast registry와 BigQuery 권한 (이슈 #57)
 `feast-registry.tf`와 `storage.tf`의 수명 규칙이 만듭니다.
 - **registry 위치**: `<프로젝트-ID>-model-artifacts` 버킷의 `feast/registry.pb`입니다.
