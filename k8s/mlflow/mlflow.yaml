@@ -136,7 +136,8 @@ spec:
 ---
 # 클러스터 안에서 MLflow에 접속할 수 있는 곳을 제한한다. MLflow에는 인증이 없어서, 막지 않으면 클러스터 안의 모든 파드가
 # 실험 기록과 모델 레지스트리를 바꾸고 모델 파일을 지울 수 있다(PR #34 리뷰).
-# 지금은 학습·작업 파드가 도는 airflow 네임스페이스만 허용한다. 추론 서버의 네임스페이스가 정해지면 from 목록에 추가한다.
+# 학습·작업 파드가 도는 airflow 네임스페이스와, 모델을 읽는 추론 서버의 inference 네임스페이스만 허용한다(11/26, 이슈 #76).
+# NetworkPolicy는 포트 단위라 inference도 쓰기 API까지 닿는다. 추론 서버 코드는 읽기만 한다.
 # 베스천의 kubectl port-forward와 파드 상태 검사가 이 정책에 막히지 않는지는 적용 후에 확인한다.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -154,6 +155,9 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: airflow
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: inference
       ports:
         - protocol: TCP
           port: 5000
