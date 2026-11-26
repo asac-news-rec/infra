@@ -1,0 +1,163 @@
+# MLflow 서버 배포 (GKE, 네임스페이스 mlflow).
+# - 기록(실험·모델 등록 정보)은 SQLite 파일로 디스크(PVC)에 저장한다. 1차 구성이며 서버는 1개만 둔다.
+# - 모델 파일은 GCS(model-artifacts 버킷의 mlflow/)에 저장한다.
+# - 서버가 GCS에 대신 쓰므로(--serve-artifacts) 학습 코드(클라이언트)는 GCS 권한이 필요 없다.
+# - 접속 주소는 클러스터 안에서만 쓰는 ClusterIP. 사람은 베스천에서 port-forward로 접속한다.
+# 적용: 베스천에서 kubectl apply -f mlflow.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlflow
+---
+# 쿠버네티스 서비스 계정. 아래 annotation으로 구글 서비스 계정(mlflow-server)의 신분을 빌려 쓴다(Workload Identity).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlflow
+  namespace: mlflow
+  annotations:
+    iam.gke.io/gcp-service-account: mlflow-server@final-project-513508.iam.gserviceaccount.com
+---
+# 디스크 요청서. 파드가 죽거나 노드가 0개가 되어도 디스크와 기록은 남는다.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-data
+  namespace: mlflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard-rwo
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: mlflow
+spec:
+  replicas: 1
+  # 디스크(ReadWriteOnce)를 한 파드만 쓸 수 있어서, 새 파드를 띄우기 전에 옛 파드를 먼저 내린다.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      serviceAccountName: mlflow
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: mlflow
+          image: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/mlflow:3.18.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - mlflow
+            - server
+            - --host=0.0.0.0
+            - --port=5000
+            - --workers=1
+            - --backend-store-uri=sqlite:////mlflow/data/mlflow.db
+            - --artifacts-destination=gs://final-project-513508-model-artifacts/mlflow
+            - --serve-artifacts
+            # 허용할 Host 헤더는 아래 env의 MLFLOW_SERVER_ALLOWED_HOSTS에서 정한다.
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            # MLflow 3.18은 기본으로 "작업 실행" 기능을 켜서 프로세스를 11개 띄운다(메모리 약 1.9GB, 11/14 측정).
+            # 이 서비스에는 필요 없어서 끈다. 끄면 프로세스 2개, 약 420MB.
+            - name: MLFLOW_SERVER_ENABLE_JOB_EXECUTION
+              value: "false"
+            # MLflow 3.x 보안 설정은 기본으로 localhost와 사설 IP의 Host 헤더만 허용한다.
+            # 클러스터 안에서 서비스 이름으로 접속하는 주소(mlflow.mlflow.svc.cluster.local:5000)는 기본 설정에서 403으로 막힌다(11/14 재현).
+            # 서비스 이름 형태와 localhost(베스천 port-forward)를 허용한다. 상태 확인(/health)은 이 설정과 무관하게 통과한다.
+            - name: MLFLOW_SERVER_ALLOWED_HOSTS
+              value: "mlflow:5000,mlflow.mlflow:5000,mlflow.mlflow.svc:5000,mlflow.mlflow.svc.cluster.local:5000,localhost:5000,127.0.0.1:5000"
+          # 시작이 느리다(11/14 확인: 시작 완료까지 약 1분). 시작 검사가 끝나기 전에는 아래 두 검사가 동작하지 않는다.
+          # 최대 10초 x 30번 = 5분까지 기다린다.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /mlflow/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mlflow-data
+---
+# 클러스터 안에서만 쓰는 고정 주소. http://mlflow.mlflow.svc.cluster.local:5000
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  namespace: mlflow
+spec:
+  type: ClusterIP
+  selector:
+    app: mlflow
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+---
+# 클러스터 안에서 MLflow에 접속할 수 있는 곳을 제한한다. MLflow에는 인증이 없어서, 막지 않으면 클러스터 안의 모든 파드가
+# 실험 기록과 모델 레지스트리를 바꾸고 모델 파일을 지울 수 있다(PR #34 리뷰).
+# 학습·작업 파드가 도는 airflow 네임스페이스와, 모델을 읽는 추론 서버의 inference 네임스페이스만 허용한다(11/26, 이슈 #76).
+# NetworkPolicy는 포트 단위라 inference도 쓰기 API까지 닿는다. 추론 서버 코드는 읽기만 한다.
+# 베스천의 kubectl port-forward와 파드 상태 검사가 이 정책에 막히지 않는지는 적용 후에 확인한다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mlflow-allow-ingress
+  namespace: mlflow
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: airflow
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: inference
+      ports:
+        - protocol: TCP
+          port: 5000
