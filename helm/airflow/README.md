@@ -113,3 +113,9 @@
 helm -n airflow uninstall airflow
 ```
 메타데이터 DB 디스크(PVC)는 남을 수 있습니다. 완전히 지울 때만 `kubectl -n airflow delete pvc --all`을 실행합니다(기록이 사라집니다).
+
+- 11/27 추가: 세호 님 요청으로 로깅 코드를 frontend `b84398c`(#71, 내보내기 준비 잠금 범위 개선)로 올렸습니다. SQL 파일은 바뀌지 않아 DB 작업은 없고, 새 의존성 `psycopg-pool`은 로깅 서버 연결 풀 전용이라 이미지에 넣지 않았습니다(Airflow는 `interval_export` 경로만 씀). 13:19(KST) 적용(REVISION 11), 백업은 베스천 `~/airflow-values-rev10.yaml`.
+
+  ```bash
+  helm upgrade airflow apache-airflow/airflow -n airflow --version 1.22.0 --reuse-values --set images.airflow.tag=3.2.2-logging-b84398c --timeout 10m --wait
+  ```

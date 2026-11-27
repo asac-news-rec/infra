@@ -17,7 +17,7 @@ images:
     # 기본 Airflow 3.2.2에 프런트 레포의 logging_service와 의존성을 더한 이미지(docker/airflow/Dockerfile).
     # 태그 끝 8bacd79는 프런트 레포 커밋 SHA의 앞 7자리다. 같은 태그를 덮어쓰지 않고 새 태그를 쓴다.
     repository: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/airflow
-    tag: "3.2.2-logging-8bacd79"
+    tag: "3.2.2-logging-b84398c"
   gitSync:
     # registry.k8s.io 이미지를 news-rec 저장소로 복사한 것(11/16).
     repository: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/git-sync
