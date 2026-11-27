@@ -36,7 +36,7 @@ spec:
       serviceAccountName: inference-server
       containers:
         - name: inference-server
-          image: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/inference-server:cf23f48
+          image: asia-northeast3-docker.pkg.dev/final-project-513508/news-rec/inference-server:87b98d2
           ports:
             - containerPort: 8080
           env:
