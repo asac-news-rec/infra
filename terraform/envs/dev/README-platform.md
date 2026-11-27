@@ -44,6 +44,13 @@ terraform apply tfplan
 - 배스천 VM 시작 스크립트가 `kubectl`과 GKE 인증 도구를 설치합니다. 실패하면 VM에 접속해 `sudo apt-get install -y kubectl google-cloud-cli-gke-gcloud-auth-plugin`을 실행합니다.
 - 배스천의 부팅 이미지는 Debian 13입니다. Debian 12 이미지(커널 6.1.0-55, 2026-11-14 빌드)에서 VM이 반복해서 멈춰 바꿨습니다(이슈 #46). 이미지를 바꾸면 VM이 교체되고, **VM이 교체되면 접속 권한(OS Login, IAP)이 사라집니다**(VM에 붙은 IAM 정책이라 VM과 함께 지워지며 11/17에 두 번 확인했습니다). 교체 뒤에는 아래 명령으로 다시 만듭니다: `terraform apply -target=google_compute_instance_iam_member.bastion_os_login -target=google_iap_tunnel_instance_iam_member.bastion_iap`. VM이 교체될 때 이 두 바인딩도 같이 다시 만들어지게 하는 근본 해결(`replace_triggered_by`)은 후속으로 합니다. 현재 VM의 이미지는 `debian-13-trixie-v20261116`입니다(2026-11-19 `gcloud compute disks describe`로 확인). 같은 멈춤이 재발하면 `image`를 이 이름으로 고정합니다. 패밀리(`debian-13`)를 유지하는 것은 새 VM이 보안 패치가 된 최신 빌드를 받게 하기 위해서이고, 고정하면 패치가 늦어집니다.
 
+## Airflow 로그 저장소 (이슈 #50)
+`airflow-logs.tf`가 만듭니다. Airflow 로그를 디스크 대신 GCS에 저장해, 로그가 폭증해도 디스크가 가득 차 서버가 멈추지 않게 합니다(멘토 11/16).
+- 버킷 `<프로젝트-ID>-airflow-logs`: 생성 60일이 지난 객체를 자동 삭제하는 **수명주기 규칙**(`age = 60`, `Delete`)이 있습니다. GCS의 "보존 정책(retention policy)"은 삭제를 **막는** 기능이라 쓰지 않습니다.
+- 권한: GCP 서비스 계정 `airflow`에 이 버킷의 객체 읽기·쓰기(`roles/storage.objectUser`, 이 버킷에만). 작업 로그는 스케줄러·트리거러가 올리고, 화면은 API 서버가 읽으므로 `airflow-api-server`도 Workload Identity로 연결했습니다.
+- Airflow 쪽 설정: `config.logging.remote_logging=True`, `config.logging.remote_base_log_folder=gs://<프로젝트-ID>-airflow-logs/logs`, `apiServer`의 서비스 계정 주석 `iam.gke.io/gcp-service-account`. 설치 값은 `helm/airflow`(이슈 #35)에서 관리합니다.
+- 로그 디스크(5Gi)는 작업 중 임시 파일용으로 남겨 둡니다.
+
 ## 클러스터에 접속하기
 클러스터는 비공개라서 **배스천에서만** 접속합니다.
 ```bash
