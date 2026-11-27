@@ -20,3 +20,10 @@ dataStorage:
 # 켤 때는 default 사용자를 aclUsers 또는 aclConfig에 정의해야 한다.
 auth:
   enabled: false
+
+# 메모리 상한(11/27). 추천 목록(rec:list:*, 30분 TTL)이 쌓여도 피처가 밀려나지 않게 한다.
+# volatile-ttl은 TTL이 있는 키만 지운다. Feast 키는 TTL이 없어서(key_ttl_seconds 미설정) 남는다.
+# 이 값을 바꿔 helm upgrade 하면 Pod가 재시작돼 피처가 비므로, 전체 materialize와 같이 적용한다.
+valkeyConfig: |
+  maxmemory 400mb
+  maxmemory-policy volatile-ttl
