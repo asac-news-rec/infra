@@ -1,6 +1,6 @@
 # 데이터 파이프라인 작업 이미지 (이슈 #73)
 
-윤모 님 데이터 파이프라인 DAG가 쓰는 작업 이미지 2개를 만드는 방법입니다.
+윤모 님 데이터 파이프라인 DAG가 쓰는 작업 이미지 3개를 만드는 방법입니다.
 Airflow 이미지(`docker/airflow/Dockerfile`)와 같은 자리에 두어 이미지 관리 방식을 맞춥니다.
 
 | 이미지 | Dockerfile | 쓰는 DAG | Airflow Variable |
@@ -9,7 +9,7 @@ Airflow 이미지(`docker/airflow/Dockerfile`)와 같은 자리에 두어 이미
 | `news-rec/embed-work` | `docker/embed-work/Dockerfile` | embed_articles | `embed_work_image` |
 | `news-rec/train-work` | `docker/train-work/Dockerfile` | train_pctr(매일 02:30 KST, worker Spot 노드) | `train_work_image` |
 
-- 빌드 컨텍스트는 **data-ml-pipeline 저장소 루트**입니다(`pyproject.toml`, `uv.lock`, `features/`, `ingest/`, `transform/`).
+- 빌드 컨텍스트는 **data-ml-pipeline 저장소 루트**입니다(`pyproject.toml`, `uv.lock`, `features/`, `ingest/`, `transform/`, train-work는 `serving/`·`training/`도 씀).
 - 태그는 data-ml-pipeline **main 커밋 SHA 앞 7자리**입니다. 같은 태그를 덮어쓰지 않습니다.
 - 빌드에는 `--provenance=false --sbom=false`를 붙입니다. 빼면 이미지가 목록형(manifest list)과 태그 없는 부속 객체로 올라가, 저장소의 "태그 없는 이미지 7일 뒤 삭제" 규칙에 부속 객체가 걸릴 수 있습니다.
 - `ingest/`, `transform/`은 data-ml-pipeline PR #33·#35·#37·#39가 main에 머지된 뒤에 생기므로 그 전에는 빌드가 실패합니다.
@@ -21,7 +21,7 @@ Airflow 이미지(`docker/airflow/Dockerfile`)와 같은 자리에 두어 이미
 # 1) data-ml-pipeline을 main 최신으로 받고 커밋 SHA를 태그로 쓴다
 cd ~/data-ml-pipeline && git switch main && git pull --ff-only && SHA=$(git rev-parse --short=7 HEAD) && echo $SHA
 
-# 2) 작업 이미지 2개 빌드(컨텍스트 = data-ml-pipeline 루트)
+# 2) 작업 이미지 3개 빌드(컨텍스트 = data-ml-pipeline 루트)
 REG=asia-northeast3-docker.pkg.dev/final-project-513508/news-rec
 docker build --provenance=false --sbom=false -f ~/infra/docker/feast-work/Dockerfile -t $REG/feast-work:$SHA ~/data-ml-pipeline
 docker build --provenance=false --sbom=false -f ~/infra/docker/embed-work/Dockerfile -t $REG/embed-work:$SHA ~/data-ml-pipeline
