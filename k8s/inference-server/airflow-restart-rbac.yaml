@@ -1,0 +1,29 @@
+# 학습 DAG(data-ml-pipeline #53, dags/train_pctr.py)가 새 champion 모델을 등록한 뒤 추론 서버를 롤링 재시작할 수 있게 한다.
+# 재시작 단계(restart_inference_server)는 PythonOperator라 작업 Pod가 아니라 Airflow 스케줄러 안에서 돈다(LocalExecutor).
+# 그래서 권한은 airflow-task가 아니라 스케줄러의 쿠버네티스 계정(airflow/airflow-scheduler)에 준다.
+# 범위: inference 네임스페이스의 inference-server Deployment 하나만 읽기(get)·고치기(patch). 만들기·지우기는 없다.
+# 적용: 배스천에서 kubectl apply -f k8s/inference-server/airflow-restart-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: airflow-restart-inference
+  namespace: inference
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["inference-server"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: airflow-restart-inference
+  namespace: inference
+subjects:
+  - kind: ServiceAccount
+    name: airflow-scheduler
+    namespace: airflow
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: airflow-restart-inference
