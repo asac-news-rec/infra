@@ -21,6 +21,7 @@
 ├── README.md
 ├── AGENTS.md                 # 에이전트 진입 문서
 ├── CONTRIBUTING.md           # 사람용 협업 규칙 (워크플로우 전체)
+├── k8s/                      # kubectl로 올리는 매니페스트 (예: news-generator PVC, 이슈 #59)
 ├── .claude/
 │   └── docs/                 # 에이전트 상세 가이드 (.agents는 이 폴더의 symlink)
 └── .github/
